@@ -782,3 +782,29 @@ export interface HomePageClientProps {
   moduleSummary: ModuleSummary;
   recentActivities: RecentActivity[];
 }
+export interface Booking {
+  id: string;
+  reference: string;
+  requester: string;
+  department: string;
+  vehicleType: string;
+  vehicleId: string;
+  destination: string;
+  purpose: string;
+  startDate: string;
+  endDate: string;
+  passengers: number;
+  status: "pending" | "approved" | "rejected";
+  requestedAt: string;
+  approver?: string;
+  approvedAt?: string;
+  rejectionReason?: string;
+}
+
+export interface StatCardProps {
+  title: string;
+  value: number;
+  icon: React.ReactNode;
+  trend?: string;
+  variant: "default" | "pending" | "approved" | "rejected";
+}

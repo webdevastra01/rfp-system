@@ -27,6 +27,7 @@ import {
   ChevronRight,
   ChevronDown,
   HandCoins,
+  Car,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -142,6 +143,44 @@ const allNavItems: NavItem[] = [
         label: "Finance Settings",
         href: "/home/finance/settings",
         permission: { type: "section", id: "finance-settings" },
+      },
+    ],
+  },
+  {
+    label: "Car Booking",
+    icon: Car,
+    permission: { type: "page", id: "car-booking" },
+    subsections: [
+      {
+        label: "Bookings",
+        href: "/home/jmave/bookings",
+        permission: { type: "section", id: "bookings" },
+        badge: "12",
+      },
+      {
+        label: "Quick Quotations",
+        href: "/home/jmave/quick-quotations",
+        permission: { type: "section", id: "quick-quotations" },
+      },
+      {
+        label: "Compution and Itenerary",
+        href: "/home/jmave/compution-and-itenerary",
+        permission: { type: "section", id: "compution-and-itenerary" },
+      },
+      {
+        label: "Internal Breakdowns",
+        href: "/home/jmave/internal-breakdowns",
+        permission: { type: "section", id: "internal-breakdowns" },
+      },
+      {
+        label: "Vehicle Rental Agreements",
+        href: "/home/jmave/vra",
+        permission: { type: "section", id: "vra" },
+      },
+      {
+        label: "Car Booking Settings",
+        href: "/home/jmave/settings",
+        permission: { type: "section", id: "jmave-settings" },
       },
     ],
   },
@@ -361,15 +400,19 @@ export default function TopNavigation({
   }, [pathname, navItems]);
 
   function getInitials() {
-  const name = useFullName().fullName;
-  const parts = name?.split(" ") || [];
-  
-  const initials = parts.length > 0
-    ? parts.slice(0, 2).map(p => p[0].toUpperCase()).join("")
-    : "JD";
-    
-  return { initials, name: name || null };
-}
+    const name = useFullName().fullName;
+    const parts = name?.split(" ") || [];
+
+    const initials =
+      parts.length > 0
+        ? parts
+            .slice(0, 2)
+            .map((p) => p[0].toUpperCase())
+            .join("")
+        : "JD";
+
+    return { initials, name: name || null };
+  }
 
   if (isLoading) {
     return (
