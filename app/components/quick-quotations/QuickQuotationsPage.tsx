@@ -11,9 +11,7 @@ import {
   Clock,
   ChevronRight,
   FileText,
-  X,
   Check,
-  ArrowRight,
   Percent,
   Wallet,
   Receipt,
@@ -21,33 +19,19 @@ import {
   Droplets,
   Moon,
   Sun,
-  Briefcase,
   Building2,
   Plane,
   RotateCcw,
   ArrowLeftRight,
-  Map,
   UtensilsCrossed,
   Hotel,
   Gauge,
   Route,
   AlertCircle,
-  Printer,
-  Download,
-  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -55,77 +39,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-type ComputationMode = "with-driver" | "without-driver";
-type VehicleCategory =
-  | "compact"
-  | "sedan"
-  | "mpv"
-  | "suv"
-  | "pickup"
-  | "wagon"
-  | "van";
-type Timeframe = "8h" | "12h" | "24h";
-type Classification = "primo" | "budget-mile" | "premium";
-type FuelSetup = "all-in" | "renter";
-type TripType = "round-trip" | "pickup-dropoff" | "airport-transfer";
-type EventType = "regular" | "holiday";
-type ClientType = "individual" | "corporate";
-type Coverage = "davao" | "region" | "mindanao";
-type DrivingTerm = "long-term-parking" | "back-forth";
-type FuelType = "diesel" | "gasoline";
-
-interface BaseFormState {
-  vehicleCategory: VehicleCategory | "";
-  timeframe: Timeframe | "";
-  classification: Classification | "";
-  startDate: string;
-  endDate: string;
-  additionalHours: number;
-  distance: number;
-  fuelPrice: number;
-}
-
-interface WithoutDriverForm extends BaseFormState {
-  cdw: boolean;
-}
-
-interface WithDriverForm extends BaseFormState {
-  fuelSetup: FuelSetup | "";
-  tripType: TripType | "";
-  eventType: EventType | "";
-  clientType: ClientType | "";
-  coverage: Coverage | "";
-  drivingTerm: DrivingTerm | "";
-  accommodationFee: number;
-  mealFee: number;
-  fuelType: FuelType | "";
-}
-
-interface QuotationLineItem {
-  label: string;
-  value: number;
-  isDeduction?: boolean;
-  isHighlight?: boolean;
-  isSubtotal?: boolean;
-  isTotal?: boolean;
-  note?: string;
-  icon?: React.ReactNode;
-}
-
-interface QuotationResult {
-  lineItems: QuotationLineItem[];
-  operationalDetails: { label: string; value: string }[];
-  mode: ComputationMode;
-}
-
-// ─── Configuration ───────────────────────────────────────────────────────────
+import {
+  Classification,
+  ClientType,
+  ComputationMode,
+  Coverage,
+  DrivingTerm,
+  EventType,
+  FuelSetup,
+  FuelType,
+  QuotationLineItem,
+  QuotationResult,
+  Timeframe,
+  TripType,
+  VehicleCategory,
+  WithDriverForm,
+  WithoutDriverForm,
+} from "@/lib/interfaces";
+import QuotationModal from "./QuotationModal";
 
 const VEHICLE_CATEGORIES: {
   value: VehicleCategory;
@@ -285,6 +218,7 @@ function computeWithoutDriverQuotation(
     form.timeframe === "24h" && form.startDate && form.endDate
       ? computeDays(form.startDate, form.endDate)
       : 1;
+
   const hours =
     form.timeframe === "8h" ? 8 : form.timeframe === "12h" ? 12 : 24;
   const totalHours = days * hours + form.additionalHours;
@@ -293,18 +227,21 @@ function computeWithoutDriverQuotation(
     form.vehicleCategory && form.classification
       ? (BASE_RATES[form.vehicleCategory]?.[form.classification] ?? 2000)
       : 2000;
+
   const tfMult = form.timeframe
     ? (TIMEFRAME_MULTIPLIERS[form.timeframe] ?? 1)
     : 1;
+
   const rentalRate = Math.round(baseRate * tfMult * days);
 
   const additionalHoursRate = Math.round(
-    form.additionalHours * (baseRate * 0.08),
+    form.additionalHours * (baseRate * 0.08)
   );
   const cdwRate =
     form.cdw && form.vehicleCategory
       ? Math.round(CDW_RATES[form.vehicleCategory] ?? 350)
       : 0;
+
   const carwash = Math.round(rentalRate * 0.02);
   const deliveryFee = Math.round(rentalRate * 0.03);
   const pickupFee = Math.round(rentalRate * 0.03);
@@ -315,11 +252,12 @@ function computeWithoutDriverQuotation(
   const hourlyExtension = Math.round(form.additionalHours * 150);
 
   const fuelConsumption = Math.round(form.distance * 0.12 * 10) / 10;
-  const fuelCost = Math.round(fuelConsumption * form.fuelPrice);
+  const fuelCost = Math.round(fuelConsumption * (form.fuelPrice || 0));
   const excessKm = Math.max(0, form.distance - days * 100);
   const excessMileage = Math.round(excessKm * 15);
 
-  const subtotal =
+  // === Main Charges Subtotal ===
+  const mainSubtotal =
     rentalRate +
     additionalHoursRate +
     cdwRate +
@@ -330,120 +268,67 @@ function computeWithoutDriverQuotation(
     beyondHours +
     hourlyExtension +
     excessMileage;
-  const discount = Math.round(subtotal * 0.05);
-  const prepaid = Math.round(subtotal * 0.3);
-  const total = subtotal - discount + prepaid;
-  const deposit = Math.round(total * 0.2);
-  const terminalFee = Math.round(total * 0.035);
+
+  const discount = Math.round(mainSubtotal * 0.05);
+
+  const subtotalAfterDiscount = mainSubtotal - discount;
+
+  // Additional Fees
+  const prepaidReservation = Math.round(subtotalAfterDiscount * 0.3); // or use mainSubtotal
+  const deposit = Math.round(subtotalAfterDiscount * 0.2);
+  const terminalFee = Math.round(subtotalAfterDiscount * 0.035);
   const depositFee = Math.round(deposit * 0.035);
-  const overallTotal = total + deposit + terminalFee + depositFee;
+
+  const overallTotal =
+    subtotalAfterDiscount +
+    prepaidReservation +
+    deposit +
+    terminalFee +
+    depositFee;
 
   return {
     mode: "without-driver",
     lineItems: [
-      {
-        label: "Rental Rate",
-        value: rentalRate,
-        icon: <Car className="h-4 w-4" />,
+      // Main Charges
+      { label: "Rental Rate", value: rentalRate, icon: <Car className="h-4 w-4" /> },
+      { 
+        label: "Additional Hours", 
+        value: additionalHoursRate, 
+        note: `${form.additionalHours} hrs @ ₱150/hr`, 
+        icon: <Clock className="h-4 w-4" /> 
       },
-      {
-        label: "Additional Hours",
-        value: additionalHoursRate,
-        note: `${form.additionalHours} hrs @ ₱150/hr`,
-        icon: <Clock className="h-4 w-4" />,
-      },
-      {
-        label: "CDW (Collision Damage Waiver)",
-        value: cdwRate,
-        icon: <Shield className="h-4 w-4" />,
-      },
-      {
-        label: "Carwash",
-        value: carwash,
-        icon: <Droplets className="h-4 w-4" />,
-      },
-      {
-        label: "Delivery Fee",
-        value: deliveryFee,
-        icon: <MapPin className="h-4 w-4" />,
-      },
-      {
-        label: "Pick-up Fee",
-        value: pickupFee,
-        icon: <MapPin className="h-4 w-4" />,
-      },
-      {
-        label: "Overtime Premium",
-        value: overtimePremium,
-        icon: <Clock className="h-4 w-4" />,
-      },
-      {
-        label: "Beyond Operating Hours",
-        value: beyondHours,
-        icon: <Moon className="h-4 w-4" />,
-      },
-      {
-        label: "Hourly Extension Rate",
-        value: hourlyExtension,
-        icon: <Gauge className="h-4 w-4" />,
-      },
-      {
-        label: "Excess Mileage",
-        value: excessMileage,
-        note: `${excessKm} km excess`,
-        icon: <Route className="h-4 w-4" />,
-      },
-      {
-        label: "Subtotal",
-        value: subtotal,
-        isSubtotal: true,
-        icon: <Receipt className="h-4 w-4" />,
-      },
-      {
-        label: "Less: Discount (5%)",
-        value: -discount,
-        isDeduction: true,
-        icon: <Percent className="h-4 w-4" />,
-      },
-      {
-        label: "Prepaid / Reservation Fee",
-        value: prepaid,
-        icon: <Wallet className="h-4 w-4" />,
-      },
-      {
-        label: "Total",
-        value: total,
-        isTotal: true,
-        icon: <Receipt className="h-4 w-4" />,
-      },
-      {
-        label: "Deposit (20%)",
-        value: deposit,
-        icon: <Wallet className="h-4 w-4" />,
-      },
-      {
-        label: "Terminal Fee (3.5%)",
-        value: terminalFee,
-        icon: <Percent className="h-4 w-4" />,
-      },
-      {
-        label: "Deposit Fee (3.5%)",
-        value: depositFee,
-        icon: <Percent className="h-4 w-4" />,
-      },
-      {
-        label: "Overall Total",
-        value: overallTotal,
-        isTotal: true,
-        isHighlight: true,
-        icon: <Calculator className="h-4 w-4" />,
+      { label: "CDW (Collision Damage Waiver)", value: cdwRate, icon: <Shield className="h-4 w-4" /> },
+      { label: "Carwash", value: carwash, icon: <Droplets className="h-4 w-4" /> },
+      { label: "Delivery Fee", value: deliveryFee, icon: <MapPin className="h-4 w-4" /> },
+      { label: "Pick-up Fee", value: pickupFee, icon: <MapPin className="h-4 w-4" /> },
+      { label: "Overtime Premium", value: overtimePremium, icon: <Clock className="h-4 w-4" /> },
+      { label: "Beyond Operating Hours", value: beyondHours, icon: <Moon className="h-4 w-4" /> },
+      { label: "Hourly Extension Rate", value: hourlyExtension, icon: <Gauge className="h-4 w-4" /> },
+      { label: "Excess Mileage", value: excessMileage, note: `${excessKm} km excess`, icon: <Route className="h-4 w-4" /> },
+
+      // Subtotal
+      { label: "Subtotal", value: mainSubtotal, isSubtotal: true, icon: <Receipt className="h-4 w-4" /> },
+
+      // Deduction
+      { label: "Less: Discount (5%)", value: -discount, isDeduction: true, icon: <Percent className="h-4 w-4" /> },
+
+      // Fees
+      { label: "Prepaid / Reservation Fee", value: prepaidReservation, icon: <Wallet className="h-4 w-4" /> },
+      { label: "Deposit (20%)", value: deposit, icon: <Wallet className="h-4 w-4" /> },
+      { label: "Terminal Fee (3.5%)", value: terminalFee, icon: <Percent className="h-4 w-4" /> },
+      { label: "Deposit Fee (3.5%)", value: depositFee, icon: <Percent className="h-4 w-4" /> },
+
+      // Overall Total
+      { 
+        label: "Overall Total", 
+        value: overallTotal, 
+        isTotal: true, 
+        isHighlight: true, 
+        icon: <Calculator className="h-4 w-4" /> 
       },
     ],
     operationalDetails: [
-      {
-        label: "Total Days Rented",
-        value: `${days} day${days > 1 ? "s" : ""}`,
-      },
+      { label: "Total Days Rented", value: `${days} day${days > 1 ? "s" : ""}` },
       { label: "Total Hours Rented", value: `${totalHours} hours` },
       { label: "Fuel Consumption", value: `${fuelConsumption} L` },
       { label: "Fuel Cost", value: `₱${fuelCost.toLocaleString()}` },
@@ -458,14 +343,17 @@ function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
     form.timeframe === "24h" && form.startDate && form.endDate
       ? computeDays(form.startDate, form.endDate)
       : 1;
+
   const hours =
     form.timeframe === "8h" ? 8 : form.timeframe === "12h" ? 12 : 24;
+
   const totalHours = days * hours + form.additionalHours;
 
   const baseRate =
     form.vehicleCategory && form.classification
       ? (BASE_RATES[form.vehicleCategory]?.[form.classification] ?? 2000)
       : 2000;
+
   const tfMult = form.timeframe
     ? (TIMEFRAME_MULTIPLIERS[form.timeframe] ?? 1)
     : 1;
@@ -477,51 +365,63 @@ function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
   const eventMult = form.eventType
     ? (EVENT_MULTIPLIERS[form.eventType] ?? 1)
     : 1;
+
+  // === Main Calculations ===
   const rentalRate = Math.round(baseRate * tfMult * covMult * eventMult * days);
 
-  const driverFee = Math.round(
-    form.vehicleCategory
-      ? (DRIVER_FEE_RATES[form.vehicleCategory] ?? 1000) * days * eventMult
-      : 1000 * days * eventMult,
-  );
+  const driverRate = form.vehicleCategory
+    ? (DRIVER_FEE_RATES[form.vehicleCategory] ?? 1000)
+    : 1000;
+
+  const driverFee = Math.round(driverRate * days * eventMult);
+
   const additionalHoursCar = Math.round(
     form.additionalHours * (baseRate * 0.08),
   );
   const additionalHoursDriver = Math.round(form.additionalHours * 200);
-  const cdwRate = 0; // CDW typically not offered with driver
+
+  const cdwRate = 0;
   const carwash = Math.round(rentalRate * 0.02);
-  const accommodation = Math.round(form.accommodationFee * days);
-  const meal = Math.round(form.mealFee * days);
+  const accommodation = Math.round((form.accommodationFee || 0) * days);
+  const meal = Math.round((form.mealFee || 0) * days);
 
   const fuelConsumption = Math.round(form.distance * 0.12 * 10) / 10;
-  const fuelCost = Math.round(fuelConsumption * form.fuelPrice);
+  const fuelCost = Math.round(fuelConsumption * (form.fuelPrice || 0));
   const fuelCharge = form.fuelSetup === "all-in" ? fuelCost : 0;
 
   const excessKm = Math.max(0, form.distance - days * 100);
   const excessMileage = Math.round(excessKm * 15);
+
   const nightDiff =
     form.eventType === "holiday" ? Math.round(driverFee * 0.2) : 0;
 
+  // === Subtotal ===
   const subtotal =
     rentalRate +
     additionalHoursCar +
-    carwash +
     driverFee +
     additionalHoursDriver +
+    carwash +
     accommodation +
     meal +
     fuelCharge +
     excessMileage +
     nightDiff;
-  const discount = Math.round(
-    subtotal * (form.clientType === "corporate" ? 0.08 : 0.03),
-  );
-  const total = subtotal - discount;
-  const terminalFee = Math.round(total * 0.035);
-  const reservationFee = Math.round(total * 0.05);
-  const finalTotal = total + terminalFee + reservationFee;
 
+  const discountPercent = form.clientType === "corporate" ? 0.08 : 0.03;
+  const discount = Math.round(subtotal * discountPercent);
+
+  const totalAfterDiscount = subtotal - discount;
+
+  // Additional Fees
+  const terminalFee = Math.round(totalAfterDiscount * 0.035);
+  const reservationFee = Math.round(totalAfterDiscount * 0.05);
+
+  const finalTotal = totalAfterDiscount + terminalFee + reservationFee;
+
+  // === Line Items (Clean & Categorized) ===
   const lineItems: QuotationLineItem[] = [
+    // Main Charges
     {
       label: "Rental Rate",
       value: rentalRate,
@@ -533,24 +433,21 @@ function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
       note: `${form.additionalHours} hrs`,
       icon: <Clock className="h-4 w-4" />,
     },
-    { label: "CDW", value: cdwRate, icon: <Shield className="h-4 w-4" /> },
-    {
-      label: "Carwash",
-      value: carwash,
-      icon: <Droplets className="h-4 w-4" />,
-    },
     {
       label: "Driver's Fee",
       value: driverFee,
-      note: form.vehicleCategory
-        ? `${days} day(s) @ ₱${DRIVER_FEE_RATES[form.vehicleCategory] ?? 1000}/day`
-        : `${days} day(s) @ ₱1000/day`,
+      note: `${days} day(s)`,
       icon: <User className="h-4 w-4" />,
     },
     {
       label: "Additional Hours (Driver)",
       value: additionalHoursDriver,
       icon: <Clock className="h-4 w-4" />,
+    },
+    {
+      label: "Carwash",
+      value: carwash,
+      icon: <Droplets className="h-4 w-4" />,
     },
     {
       label: "Accommodation",
@@ -565,7 +462,7 @@ function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
     {
       label: "Fuel",
       value: fuelCharge,
-      note: form.fuelSetup === "all-in" ? "All-in charge" : "Renter's fuel",
+      note: form.fuelSetup === "all-in" ? "All-in" : "Renter pays",
       icon: <Fuel className="h-4 w-4" />,
     },
     {
@@ -579,24 +476,32 @@ function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
       value: nightDiff,
       icon: <Moon className="h-4 w-4" />,
     },
+
+    // Subtotal
     {
       label: "Subtotal",
       value: subtotal,
       isSubtotal: true,
       icon: <Receipt className="h-4 w-4" />,
     },
+
+    // Deduction
     {
-      label: `Less: Discount (${form.clientType === "corporate" ? "8%" : "3%"})`,
+      label: `Less: Discount (${discountPercent * 100}%)`,
       value: -discount,
       isDeduction: true,
       icon: <Percent className="h-4 w-4" />,
     },
+
+    // Total
     {
       label: "Total",
-      value: total,
+      value: totalAfterDiscount,
       isTotal: true,
       icon: <Receipt className="h-4 w-4" />,
     },
+
+    // Fees
     {
       label: "Terminal Fee (3.5%)",
       value: terminalFee,
@@ -607,8 +512,10 @@ function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
       value: reservationFee,
       icon: <Wallet className="h-4 w-4" />,
     },
+
+    // Overall Total
     {
-      label: "Final Total",
+      label: "Overall Total",
       value: finalTotal,
       isTotal: true,
       isHighlight: true,
@@ -616,19 +523,20 @@ function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
     },
   ];
 
+  // Corporate Markup (if applicable)
   if (form.clientType === "corporate") {
-    const markupPercent = 10;
-    const markup = Math.round(finalTotal * (markupPercent / 100));
+    const markup = Math.round(finalTotal * 0.1);
     const corporateTotal = finalTotal + markup;
+
     lineItems.push(
       {
-        label: "Additional Percent (Markup)",
+        label: "Corporate Markup (10%)",
         value: markup,
-        note: `${markupPercent}% corporate markup`,
+        note: "Corporate handling fee",
         icon: <Percent className="h-4 w-4" />,
       },
       {
-        label: "Corporate Total",
+        label: "Corporate Final Total",
         value: corporateTotal,
         isTotal: true,
         isHighlight: true,
@@ -649,26 +557,11 @@ function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
       { label: "Fuel Consumption", value: `${fuelConsumption} L` },
       { label: "Fuel Cost", value: `₱${fuelCost.toLocaleString()}` },
       { label: "Distance Traveled", value: `${form.distance} km` },
-      {
-        label: "Coverage Area",
-        value: COVERAGES.find((c) => c.value === form.coverage)?.label ?? "",
-      },
-      {
-        label: "Trip Type",
-        value: TRIP_TYPES.find((t) => t.value === form.tripType)?.label ?? "",
-      },
-      {
-        label: "Event Type",
-        value: EVENT_TYPES.find((e) => e.value === form.eventType)?.label ?? "",
-      },
+      { label: "Coverage Area", value: form.coverage?.toUpperCase() ?? "" },
+      { label: "Trip Type", value: form.tripType?.replace("-", " ") ?? "" },
+      { label: "Event Type", value: form.eventType ?? "" },
     ],
   };
-}
-
-// ─── Helper: Currency Formatter ────────────────────────────────────────────
-
-function formatCurrency(value: number): string {
-  return `₱${value.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // ─── Sub-Components ────────────────────────────────────────────────────────
@@ -785,225 +678,6 @@ function ModeSelector({
         )}
       </button>
     </div>
-  );
-}
-
-function QuotationModal({
-  open,
-  onOpenChange,
-  result,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  result: QuotationResult | null;
-}) {
-  if (!result) return null;
-
-  const totalItems = result.lineItems.filter(
-    (li) => li.isTotal || li.isHighlight,
-  );
-  const regularItems = result.lineItems.filter(
-    (li) => !li.isTotal && !li.isHighlight && !li.isSubtotal,
-  );
-  const subtotalItem = result.lineItems.find((li) => li.isSubtotal);
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white p-0">
-        {/* Modal Header */}
-        <div className="sticky top-0 z-10 border-b border-[#E2E8F0] bg-white px-6 py-4">
-          <DialogHeader className="space-y-1">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                <FileText className="h-5 w-5 text-[#2B3A9F]" />
-                Quotation Breakdown
-              </DialogTitle>
-              <Badge
-                variant="outline"
-                className="bg-[#EEF2FF] text-[#2B3A9F] border-[#2B3A9F]/20"
-              >
-                {result.mode === "with-driver"
-                  ? "With Driver"
-                  : "Without Driver"}
-              </Badge>
-            </div>
-            <DialogDescription className="text-sm text-slate-500">
-              Generated on{" "}
-              {new Date().toLocaleDateString("en-PH", { dateStyle: "long" })} at{" "}
-              {new Date().toLocaleTimeString("en-PH", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </DialogDescription>
-          </DialogHeader>
-        </div>
-
-        <div className="px-6 py-4 space-y-6">
-          {/* Operational Details Banner */}
-          <div className="rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] p-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
-              Operational Summary
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {result.operationalDetails.map((detail) => (
-                <div key={detail.label} className="space-y-0.5">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-400">
-                    {detail.label}
-                  </p>
-                  <p className="text-sm font-semibold text-slate-900">
-                    {detail.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Line Items Table */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
-              Cost Breakdown
-            </p>
-            <div className="rounded-lg border border-[#E2E8F0] overflow-hidden">
-              <table className="w-full">
-                <tbody className="divide-y divide-[#E2E8F0]">
-                  {regularItems.map((item, idx) => (
-                    <tr
-                      key={idx}
-                      className="hover:bg-slate-50/50 transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-400">{item.icon}</span>
-                          <div>
-                            <span
-                              className={`text-sm ${item.isDeduction ? "text-slate-600" : "text-slate-700"}`}
-                            >
-                              {item.label}
-                            </span>
-                            {item.note && (
-                              <span className="ml-2 text-xs text-slate-400">
-                                {item.note}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span
-                          className={`text-sm font-mono font-medium ${
-                            item.isDeduction
-                              ? "text-rose-600"
-                              : "text-slate-900"
-                          }`}
-                        >
-                          {item.isDeduction ? "-" : ""}
-                          {formatCurrency(Math.abs(item.value))}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-
-                  {/* Subtotal */}
-                  {subtotalItem && (
-                    <tr className="bg-slate-50/80">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-500">
-                            {subtotalItem.icon}
-                          </span>
-                          <span className="text-sm font-bold text-slate-900">
-                            {subtotalItem.label}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="text-sm font-mono font-bold text-slate-900">
-                          {formatCurrency(subtotalItem.value)}
-                        </span>
-                      </td>
-                    </tr>
-                  )}
-
-                  {/* Totals */}
-                  {totalItems.map((item, idx) => (
-                    <tr
-                      key={`total-${idx}`}
-                      className={`${item.isHighlight ? "bg-[#EEF2FF]/40" : "bg-slate-50"}`}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={
-                              item.isHighlight
-                                ? "text-[#2B3A9F]"
-                                : "text-slate-500"
-                            }
-                          >
-                            {item.icon}
-                          </span>
-                          <span
-                            className={`text-sm font-bold ${item.isHighlight ? "text-[#2B3A9F]" : "text-slate-900"}`}
-                          >
-                            {item.label}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span
-                          className={`text-sm font-mono font-bold ${
-                            item.isHighlight
-                              ? "text-[#2B3A9F] text-base"
-                              : "text-slate-900"
-                          }`}
-                        >
-                          {formatCurrency(item.value)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 border-[#E2E8F0] text-slate-600"
-            >
-              <Printer className="h-4 w-4" />
-              Print
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 border-[#E2E8F0] text-slate-600"
-            >
-              <Download className="h-4 w-4" />
-              Export PDF
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 border-[#E2E8F0] text-slate-600"
-            >
-              <Copy className="h-4 w-4" />
-              Copy
-            </Button>
-            <Button
-              size="sm"
-              className="gap-2 bg-[#2B3A9F] text-white hover:bg-[#1e2870]"
-              onClick={() => onOpenChange(false)}
-            >
-              <Check className="h-4 w-4" />
-              Confirm Quotation
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
 
