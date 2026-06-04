@@ -484,7 +484,7 @@ export default function CreatePurchaseRequestForm({
     const storedUser = localStorage.getItem("userProfile");
     const user = storedUser ? JSON.parse(storedUser) : null;
 
-    if (!user?.user_id) {
+    if (!user?.profile.user_id) {
       toast.error("Authentication required", {
         description: "Please sign in to submit a purchase request.",
         id: toastId,
