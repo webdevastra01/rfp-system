@@ -26,6 +26,7 @@ import {
   FileText,
   LayoutDashboard,
   Loader2,
+  Car,
 } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -164,6 +165,24 @@ const createDefaultPermissions = (): PermissionPage[] => [
         ],
       },
       { id: "finance-settings", name: "Settings", enabled: true },
+    ],
+  },
+  {
+    id: "car-booking",
+    name: "Car Booking",
+    icon: <Car className="w-5 h-5" />,
+    enabled: true,
+    sections: [
+      { id: "bookings", name: "Bookings", enabled: true },
+      { id: "quick-quotations", name: "Quick Quotations", enabled: true },
+      {
+        id: "compution-and-itenerary",
+        name: "Compution and Itenerary",
+        enabled: true,
+      },
+      { id: "internal-breakdowns", name: "Internal Breakdowns", enabled: true },
+      { id: "vra", name: "Vehicle Rental Agreements", enabled: true },
+      { id: "jmave-settings", name: "Car Booking Settings", enabled: true },
     ],
   },
   {

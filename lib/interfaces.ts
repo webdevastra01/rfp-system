@@ -329,7 +329,6 @@ export interface RolePermissionsDialogProps {
   onPermissionsChange?: (permissions: PermissionPage[]) => void;
 }
 
-
 export interface ServiceItem {
   id: number;
   name: string;
@@ -513,21 +512,24 @@ export const statusConfig: Record<
     icon: AlertCircle,
     label: "Submitted",
   },
-  for_review: { // ← ADD THIS (snake_case version)
+  for_review: {
+    // ← ADD THIS (snake_case version)
     color: "text-[#8B5CF6]", // Purple for "needs attention"
     bgColor: "bg-[#EDE9FE]",
     borderColor: "border-[#C4B5FD]",
     icon: AlertCircle,
     label: "For Review",
   },
-  "for review": { // ← ADD THIS (space version, if your data has it this way)
+  "for review": {
+    // ← ADD THIS (space version, if your data has it this way)
     color: "text-[#8B5CF6]",
     bgColor: "bg-[#EDE9FE]",
     borderColor: "border-[#C4B5FD]",
     icon: AlertCircle,
     label: "For Review",
   },
-  forReview: { // ← ADD THIS (camelCase version, just in case)
+  forReview: {
+    // ← ADD THIS (camelCase version, just in case)
     color: "text-[#8B5CF6]",
     bgColor: "bg-[#EDE9FE]",
     borderColor: "border-[#C4B5FD]",
@@ -781,4 +783,93 @@ export interface DashboardProps {
 export interface HomePageClientProps {
   moduleSummary: ModuleSummary;
   recentActivities: RecentActivity[];
+}
+export interface Booking {
+  id: string;
+  reference: string;
+  requester: string;
+  department: string;
+  vehicleType: string;
+  vehicleId: string;
+  destination: string;
+  purpose: string;
+  startDate: string;
+  endDate: string;
+  passengers: number;
+  status: "pending" | "approved" | "rejected";
+  requestedAt: string;
+  approver?: string;
+  approvedAt?: string;
+  rejectionReason?: string;
+}
+
+export interface StatCardProps {
+  title: string;
+  value: number;
+  icon: React.ReactNode;
+  trend?: string;
+  variant: "default" | "pending" | "approved" | "rejected";
+}
+
+export type ComputationMode = "with-driver" | "without-driver";
+export type VehicleCategory =
+  | "compact"
+  | "sedan"
+  | "mpv"
+  | "suv"
+  | "pickup"
+  | "wagon"
+  | "van";
+export type Timeframe = "8h" | "12h" | "24h";
+export type Classification = "primo" | "budget-mile" | "premium";
+export type FuelSetup = "all-in" | "renter";
+export type TripType = "round-trip" | "pickup-dropoff" | "airport-transfer";
+export type EventType = "regular" | "holiday";
+export type ClientType = "individual" | "corporate";
+export type Coverage = "davao" | "region" | "mindanao";
+export type DrivingTerm = "long-term-parking" | "back-forth";
+export type FuelType = "diesel" | "gasoline";
+
+export interface BaseFormState {
+  vehicleCategory: VehicleCategory | "";
+  timeframe: Timeframe | "";
+  classification: Classification | "";
+  startDate: string;
+  endDate: string;
+  additionalHours: number;
+  distance: number;
+  fuelPrice: number;
+}
+
+export interface WithoutDriverForm extends BaseFormState {
+  cdw: boolean;
+}
+
+export interface WithDriverForm extends BaseFormState {
+  fuelSetup: FuelSetup | "";
+  tripType: TripType | "";
+  eventType: EventType | "";
+  clientType: ClientType | "";
+  coverage: Coverage | "";
+  drivingTerm: DrivingTerm | "";
+  accommodationFee: number;
+  mealFee: number;
+  fuelType: FuelType | "";
+}
+
+export interface QuotationLineItem {
+  label: string;
+  value: number;
+  isDeduction?: boolean;
+  isHighlight?: boolean;
+  isSubtotal?: boolean;
+  isTotal?: boolean;
+  note?: string;
+  icon?: React.ReactNode;
+}
+
+export interface QuotationResult {
+  lineItems: QuotationLineItem[];
+  operationalDetails: { label: string; value: string }[];
+  mode: ComputationMode;
 }
