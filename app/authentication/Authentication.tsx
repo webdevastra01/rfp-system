@@ -121,11 +121,11 @@ export default function Authentication() {
         permissions: userPermissions,
       };
 
-      if (rememberMe) {
+     // if (rememberMe) {
         localStorage.setItem("userCache", JSON.stringify(cacheData));
-      } else {
-        sessionStorage.setItem("userCache", JSON.stringify(cacheData));
-      }
+      // } else {
+      //   sessionStorage.setItem("userCache", JSON.stringify(cacheData));
+      // }
 
       // 6️⃣ Show success toast and redirect
       toast.success("Welcome back!", {
