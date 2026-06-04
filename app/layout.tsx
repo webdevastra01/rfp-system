@@ -18,8 +18,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={cn("font-sans", geist.variable)}>
-      <body>{children}</body>
-      <Toaster />
+      <body>
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }
+
