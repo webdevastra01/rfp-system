@@ -22,7 +22,7 @@ async function getRequests(supabase: any, id: string): Promise<Request[]> {
       `,
     )
     .eq("requested_by", id)
-    .order("request_number", { ascending: true });
+    .order("request_number", { ascending: false });
 
   if (error) {
     console.error("Error fetching requests:", error);

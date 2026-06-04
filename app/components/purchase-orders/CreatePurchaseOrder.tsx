@@ -547,7 +547,8 @@ export default function RequestDetailsPage({
                               </span>
                             </TableCell>
                             <TableCell className="text-right font-mono text-[#64748B]">
-                              {formatCurrency(item.unitPrice)} / {getUnitName(item.unit)}
+                              {formatCurrency(item.unitPrice)} /{" "}
+                              {getUnitName(item.unit)}
                             </TableCell>
                             <TableCell className="text-right font-mono font-bold text-[#2B3A9F]">
                               {formatCurrency(total)}
@@ -654,27 +655,29 @@ export default function RequestDetailsPage({
             </Card>
 
             {/* Vendor Info */}
-            <Card className="border-[#E2E8F0] shadow-sm">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-base text-[#1E293B] flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-[#14B8A6]" />
-                  Vendor Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <DetailItem
-                  label="Preferred Vendor"
-                  value={request.preferred_vendor}
-                  icon={Building2}
-                  highlight
-                />
-                <DetailItem
-                  label="Contact Person"
-                  value={request.contact_person}
-                  icon={User}
-                />
-              </CardContent>
-            </Card>
+            {request.preferred_vendor && (
+              <Card className="border-[#E2E8F0] shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base text-[#1E293B] flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-[#14B8A6]" />
+                    Vendor Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <DetailItem
+                    label="Preferred Vendor"
+                    value={request.preferred_vendor}
+                    icon={Building2}
+                    highlight
+                  />
+                  <DetailItem
+                    label="Contact Person"
+                    value={request.contact_person}
+                    icon={User}
+                  />
+                </CardContent>
+              </Card>
+            )}
 
             {/* Payment Info */}
             <Card className="border-[#E2E8F0] shadow-sm bg-gradient-to-b from-white to-[#F8FAFC]">

@@ -132,7 +132,7 @@ export function DataTableCard<T>({
         if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
       })
-    : filteredData;
+    : filteredData.reverse();
 
   // Pagination
   const totalPages = Math.ceil(sortedData.length / pageSize);

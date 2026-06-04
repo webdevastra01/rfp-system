@@ -47,14 +47,14 @@ export const PrintPurchaseOrder = ({
 
   // Check if vehicle details exist
   const hasVehicleDetails =
-    request.vehicle.plate_number?.trim() ||
-    request.vehicle.car_type?.trim() ||
-    request.vehicle.owners_first_name?.trim() ||
-    request.vehicle.owners_last_name?.trim();
+    request.vehicle?.plate_number?.trim() ||
+    request.vehicle?.car_type?.trim() ||
+    request.vehicle?.owners_first_name?.trim() ||
+    request.vehicle?.owners_last_name?.trim();
 
   const ownerFullName = [
-    request.vehicle.owners_first_name,
-    request.vehicle.owners_last_name,
+    request.vehicle?.owners_first_name,
+    request.vehicle?.owners_last_name,
   ]
     .filter(Boolean)
     .join(" ");

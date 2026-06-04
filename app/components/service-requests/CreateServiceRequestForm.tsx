@@ -535,9 +535,9 @@ export default function CreateServiceRequestForm({
         department: department || null,
         vehicle: plateNumber || null,
 
-        preferred_date: preferredDate || null,
-        expected_completion: expectedCompletion || null,
-        required_by: requiredBy || null,
+        preferred_date: preferredDate,
+        expected_completion: expectedCompletion,
+        required_by: requiredBy,
 
         preferred_vendor: selectedVendor || null,
         contact_person: contactPerson || null,
