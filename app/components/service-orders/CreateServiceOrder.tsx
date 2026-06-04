@@ -209,7 +209,7 @@ export default function RequestDetailsPage({
     const storedUser = localStorage.getItem("userProfile");
     const user = storedUser ? JSON.parse(storedUser) : null;
 
-    if (!user?.user_id) {
+    if (!user?.profile.user_id) {
       console.error("User not authenticated");
       return;
     }
