@@ -481,7 +481,7 @@ export default function CreatePurchaseRequestForm({
     });
 
     const supabase = createClient();
-    const storedUser = localStorage.getItem("userProfile");
+    const storedUser = localStorage.getItem("userCache");
     const user = storedUser ? JSON.parse(storedUser) : null;
 
     if (!user?.profile.user_id) {
@@ -519,7 +519,7 @@ export default function CreatePurchaseRequestForm({
         payment_method: paymentMethod || null,
         description: description || null,
         items: items,
-        requested_by: user.user_id,
+        requested_by: user.profile.user_id,
         supporting_documents: fileIds,
       };
 

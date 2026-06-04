@@ -206,7 +206,7 @@ export default function RequestDetailsPage({
       return;
     }
 
-    const storedUser = localStorage.getItem("userProfile");
+    const storedUser = localStorage.getItem("userCache");
     const user = storedUser ? JSON.parse(storedUser) : null;
 
     if (!user?.profile.user_id) {
@@ -227,7 +227,7 @@ export default function RequestDetailsPage({
         .from("service_orders")
         .insert({
           service_request_id: request.id,
-          order_prepared_by: user.user_id,
+          order_prepared_by: user.profile.user_id,
           journal_entries: journalEntriesPayload,
           status: "for approval",
         })

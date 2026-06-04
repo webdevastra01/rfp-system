@@ -501,8 +501,10 @@ export default function CreateServiceRequestForm({
 
     const supabase = createClient();
 
-    const storedUser = localStorage.getItem("userProfile");
+    const storedUser = localStorage.getItem("userCache");
     const user = storedUser ? JSON.parse(storedUser) : null;
+
+    console.log("Creating service request with user:", user);
 
     if (!user?.profile.user_id) {
       toast.error("Authentication required", {
@@ -544,7 +546,7 @@ export default function CreateServiceRequestForm({
         description: serviceDescription || null,
         items: items,
 
-        requested_by: user.user_id,
+        requested_by: user.profile.user_id,
 
         // store uploaded file IDs
         supporting_documents: fileIds,

@@ -268,7 +268,7 @@ export default function RequestDetailsPage({
       return;
     }
 
-    const storedUser = localStorage.getItem("userProfile");
+    const storedUser = localStorage.getItem("userCache");
     const user = storedUser ? JSON.parse(storedUser) : null;
 
     if (!user?.profile.user_id) {
@@ -289,7 +289,7 @@ export default function RequestDetailsPage({
         .from("purchase_orders")
         .insert({
           purchase_request_id: request.id,
-          order_prepared_by: user.user_id,
+          order_prepared_by: user.profile.user_id,
           journal_entries: journalEntriesPayload,
           status: "for approval",
         })
