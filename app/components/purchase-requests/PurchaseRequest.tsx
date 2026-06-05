@@ -366,34 +366,38 @@ export default function PurchaseRequest({
                   </div>
 
                   {/* Preferred Vendor */}
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-white border border-[#E2E8F0] hover:border-[#2B3A9F]/30 transition-colors">
-                    <div className="p-2 rounded-lg bg-purple-50 text-purple-600 shrink-0">
-                      <Building2 className="h-4 w-4" />
+                  {selectedRequest.preferred_vendor && (
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-white border border-[#E2E8F0] hover:border-[#2B3A9F]/30 transition-colors">
+                      <div className="p-2 rounded-lg bg-purple-50 text-purple-600 shrink-0">
+                        <Building2 className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">
+                          Preferred Vendor
+                        </p>
+                        <p className="text-sm font-semibold text-slate-900 truncate">
+                          {selectedRequest.preferred_vendor}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">
-                        Preferred Vendor
-                      </p>
-                      <p className="text-sm font-semibold text-slate-900 truncate">
-                        {selectedRequest.preferred_vendor}
-                      </p>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Contact Person */}
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-white border border-[#E2E8F0] hover:border-[#2B3A9F]/30 transition-colors">
-                    <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 shrink-0">
-                      <Contact className="h-4 w-4" />
+                  {selectedRequest.contact_person && (
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-white border border-[#E2E8F0] hover:border-[#2B3A9F]/30 transition-colors">
+                      <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 shrink-0">
+                        <Contact className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">
+                          Contact Person
+                        </p>
+                        <p className="text-sm font-semibold text-slate-900 truncate">
+                          {selectedRequest.contact_person}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">
-                        Contact Person
-                      </p>
-                      <p className="text-sm font-semibold text-slate-900 truncate">
-                        {selectedRequest.contact_person}
-                      </p>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Requested By */}
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-white border border-[#E2E8F0] hover:border-[#2B3A9F]/30 transition-colors">
@@ -411,19 +415,21 @@ export default function PurchaseRequest({
                   </div>
 
                   {/* Required By */}
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-white border border-[#E2E8F0] hover:border-[#2B3A9F]/30 transition-colors">
-                    <div className="p-2 rounded-lg bg-rose-50 text-rose-600 shrink-0">
-                      <Clock className="h-4 w-4" />
+                  {selectedRequest.required_by && (
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-white border border-[#E2E8F0] hover:border-[#2B3A9F]/30 transition-colors">
+                      <div className="p-2 rounded-lg bg-rose-50 text-rose-600 shrink-0">
+                        <Clock className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">
+                          Required By
+                        </p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {formatDate(selectedRequest.required_by)}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">
-                        Required By
-                      </p>
-                      <p className="text-sm font-semibold text-slate-900">
-                        {formatDate(selectedRequest.required_by)}
-                      </p>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Preferred Date */}
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-white border border-[#E2E8F0] hover:border-[#2B3A9F]/30 transition-colors">
@@ -456,19 +462,21 @@ export default function PurchaseRequest({
                   </div>
 
                   {/* Payment Method */}
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-white border border-[#E2E8F0] hover:border-[#2B3A9F]/30 transition-colors">
-                    <div className="p-2 rounded-lg bg-orange-50 text-orange-600 shrink-0">
-                      <CreditCard className="h-4 w-4" />
+                  {selectedRequest.payment_method && (
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-white border border-[#E2E8F0] hover:border-[#2B3A9F]/30 transition-colors">
+                      <div className="p-2 rounded-lg bg-orange-50 text-orange-600 shrink-0">
+                        <CreditCard className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">
+                          Payment Method
+                        </p>
+                        <p className="text-sm font-semibold text-slate-900 capitalize">
+                          {selectedRequest.payment_method}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">
-                        Payment Method
-                      </p>
-                      <p className="text-sm font-semibold text-slate-900 capitalize">
-                        {selectedRequest.payment_method}
-                      </p>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Vehicle Section */}

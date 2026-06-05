@@ -472,9 +472,9 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
                         ).toLocaleDateString()}
                       </p>
                       <p className="text-xs text-slate-500">
-                        Required by:{" "}
+                        Expected complition:{" "}
                         {new Date(
-                          selectedRequest.required_by,
+                          selectedRequest.expected_completion,
                         ).toLocaleDateString()}
                       </p>
                     </div>
@@ -497,19 +497,21 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-                      <CreditCard className="h-4 w-4" />
+                  {selectedRequest.payment_method && (
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+                        <CreditCard className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                          Payment
+                        </p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {selectedRequest.payment_method}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        Payment
-                      </p>
-                      <p className="text-sm font-semibold text-slate-900">
-                        {selectedRequest.payment_method}
-                      </p>
-                    </div>
-                  </div>
+                  )}
 
                   {selectedRequest.vehicle?.plate_number && (
                     <div className="flex items-start gap-3">
@@ -546,7 +548,7 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
                       Preferred Vendor
                     </p>
                     <p className="font-semibold text-slate-900">
-                      {selectedRequest.preferred_vendor}
+                      {selectedRequest.preferred_vendor || "—"}
                     </p>
                   </div>
                   <div>
@@ -554,7 +556,7 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
                       Contact Person
                     </p>
                     <p className="font-semibold text-slate-900">
-                      {selectedRequest.contact_person}
+                      {selectedRequest.contact_person || "—"}
                     </p>
                   </div>
                 </div>

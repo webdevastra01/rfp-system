@@ -514,26 +514,27 @@ export default function PurchaseOrder({
                       {getPriorityBadge(selectedOrder.priority_level)}
                     </div>
                   </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
-                      <CreditCard className="h-4 w-4" />
+                  {selectedOrder.payment_method && (
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+                        <CreditCard className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                          Payment
+                        </p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {selectedOrder.payment_method}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Required by:{" "}
+                          {new Date(
+                            selectedOrder.required_by,
+                          ).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        Payment
-                      </p>
-                      <p className="text-sm font-semibold text-slate-900">
-                        {selectedOrder.payment_method}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        Required by:{" "}
-                        {new Date(
-                          selectedOrder.required_by,
-                        ).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
+                  )}
 
                   {selectedOrder.vehicle?.plate_number && (
                     <div className="flex items-start gap-3">
@@ -570,7 +571,7 @@ export default function PurchaseOrder({
                       Preferred Vendor
                     </p>
                     <p className="font-semibold text-slate-900">
-                      {selectedOrder.preferred_vendor}
+                      {selectedOrder.preferred_vendor || "--"}
                     </p>
                   </div>
                   <div>
@@ -578,7 +579,7 @@ export default function PurchaseOrder({
                       Contact Person
                     </p>
                     <p className="font-semibold text-slate-900">
-                      {selectedOrder.contact_person}
+                      {selectedOrder.contact_person || "--"}
                     </p>
                   </div>
                 </div>
