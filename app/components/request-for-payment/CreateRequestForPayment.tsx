@@ -115,8 +115,22 @@ export default function CreateRequestForPayment({
   chargeToOptions,
   module,
 }: CreateRequestForPaymentPageProps) {
+  console.log("Fetched Items:", JSON.stringify(order?.items, null, 2));
   // Line Items State
-  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [lineItems, setLineItems] = useState<LineItem[]>(
+    () =>
+      order?.items?.map((item) => ({
+        id: crypto.randomUUID(),
+        invoice_number: "",
+        particulars: item.description || item.name,
+        qty: item.quantity,
+        price: item.unitPrice,
+        totalAmount: (
+          (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0)
+        ).toString(),
+        chargeTo: order.company || "",
+      })) || [],
+  );
   const [particulars, setParticulars] = useState("");
   const [qty, setQty] = useState("");
   const [price, setPrice] = useState("");
@@ -138,7 +152,19 @@ export default function CreateRequestForPayment({
 
   const router = useRouter();
 
-  const handleAddLineItem = () => {
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+
+  const handleEditLineItem = (item: LineItem) => {
+    setEditingItemId(item.id);
+
+    setInvoiceNumber(item.invoice_number);
+    setParticulars(item.particulars);
+    setQty(item.qty);
+    setPrice(item.price);
+    setChargeTo(item.chargeTo);
+  };
+
+  const handleSaveLineItem = () => {
     if (!particulars || !qty || !price) {
       toast.error("Missing required fields", {
         description: "Please fill in particulars, quantity, and price.",
@@ -147,26 +173,42 @@ export default function CreateRequestForPayment({
     }
 
     const total = (parseFloat(qty) || 0) * (parseFloat(price) || 0);
-    const newItem: LineItem = {
-      id: crypto.randomUUID(),
-      invoice_number: invoiceNumber,
-      particulars,
-      qty,
-      price,
-      totalAmount: total.toString(),
-      chargeTo,
-    };
 
-    setLineItems([...lineItems, newItem]);
-    setInvoiceNumber("");
-    setParticulars("");
-    setQty("");
-    setPrice("");
-    setChargeTo("");
+    if (editingItemId) {
+      setLineItems((prev) =>
+        prev.map((item) =>
+          item.id === editingItemId
+            ? {
+                ...item,
+                invoice_number: invoiceNumber,
+                particulars,
+                qty,
+                price,
+                totalAmount: total.toString(),
+                chargeTo,
+              }
+            : item,
+        ),
+      );
 
-    toast.success("Line item added", {
-      description: `${particulars} - ${formatCurrency(total)}`,
-    });
+      toast.success("Line item updated");
+    } else {
+      const newItem: LineItem = {
+        id: crypto.randomUUID(),
+        invoice_number: invoiceNumber,
+        particulars,
+        qty,
+        price,
+        totalAmount: total.toString(),
+        chargeTo,
+      };
+
+      setLineItems((prev) => [...prev, newItem]);
+
+      toast.success("Line item added");
+    }
+
+    resetForm();
   };
 
   const handleDeleteLineItem = (id: string) => {
@@ -316,6 +358,15 @@ export default function CreateRequestForPayment({
 
   const StatusIcon = statusConfig[order.status].icon;
 
+  const resetForm = () => {
+    setEditingItemId(null);
+    setInvoiceNumber("");
+    setParticulars("");
+    setQty("");
+    setPrice("");
+    setChargeTo("");
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-8 px-4">
       <div className="container mx-auto max-w-7xl">
@@ -350,11 +401,9 @@ export default function CreateRequestForPayment({
           {/* Left Column - Main Content */}
           <div className="xl:col-span-2 space-y-6">
             {/* Order Overview */}
-            <Card className="border-[#E2E8F0] shadow-sm overflow-hidden">
-              <div className="h-1 bg-gradient-to-r from-[#2B3A9F] via-[#3B4DB8] to-[#14B8A6]" />
-              <CardHeader className="pb-4">
-                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                  <div className="flex-1">
+            <Card className="border-[#E2E8F0] shadow-sm overflow-hidden pt-0">
+              <CardHeader className="bg-[#F8FAFC] border-b border-[#E2E8F0] pt-4">
+                <div className="flex items-center gap-3"> <div className="flex-1">
                     <CardTitle className="text-2xl font-bold text-[#1E293B] mb-2">
                       {order.title}
                     </CardTitle>
@@ -415,8 +464,8 @@ export default function CreateRequestForPayment({
             </Card>
 
             {/* Additional Information */}
-            <Card className="border-[#E2E8F0] shadow-sm">
-              <CardHeader className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
+            <Card className="border-[#E2E8F0] shadow-sm pt-0">
+              <CardHeader className="bg-[#F8FAFC] border-b border-[#E2E8F0] pt-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-[#2B3A9F] text-white">
                     <FileText className="h-5 w-5" />
@@ -463,13 +512,13 @@ export default function CreateRequestForPayment({
             </Card>
 
             {/* Line Items */}
-            <Card className="border-[#E2E8F0] shadow-sm overflow-hidden">
-              <CardHeader className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
+            <Card className="border-[#E2E8F0] shadow-sm overflow-hidden pt-0">
+              <CardHeader className="bg-[#F8FAFC] border-b border-[#E2E8F0] pt-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-[#2B3A9F] text-white shadow-sm">
+                  <div className="p-2 rounded-lg  bg-[#2B3A9F] text-white shadow-sm backdrop-blur-sm">
                     <Package className="h-5 w-5" />
                   </div>
-                  <div>
+                  <div> 
                     <CardTitle className="text-lg text-[#1E293B]">
                       Line Items
                     </CardTitle>
@@ -479,13 +528,13 @@ export default function CreateRequestForPayment({
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6 pt-6">
+              <CardContent className="space-y-6">
                 {/* Input Form */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-5 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0]">
                   {/* Invoice Number - Full width on mobile, 6 cols on md */}
                   <div className="md:col-span-6 space-y-2.5">
                     <Label className="text-sm font-bold text-[#475569] flex items-center gap-2">
-                      <Receipt className="h-4 w-4 text-[#2B3A9F]" />
+                      <Receipt className="h-4 w-4 text-[#04397C]" />
                       Invoice Number
                     </Label>
                     <Input
@@ -493,7 +542,7 @@ export default function CreateRequestForPayment({
                       placeholder="INV-XXXX-XXXX"
                       value={invoiceNumber}
                       onChange={(e) => setInvoiceNumber(e.target.value)}
-                      className="bg-white border-[#E2E8F0] focus-visible:ring-[#2B3A9F] focus-visible:border-[#2B3A9F] h-11 transition-colors"
+                      className="bg-white border-[#E2E8F0] focus-visible:ring-[#04397C] focus-visible:border-[#04397C] h-11 transition-colors"
                     />
                   </div>
 
@@ -506,7 +555,7 @@ export default function CreateRequestForPayment({
                       placeholder="Item description..."
                       value={particulars}
                       onChange={(e) => setParticulars(e.target.value)}
-                      className="bg-white border-[#E2E8F0] focus-visible:ring-[#2B3A9F] focus-visible:border-[#2B3A9F] h-11 transition-colors"
+                      className="bg-white border-[#E2E8F0] focus-visible:ring-[#04397C] focus-visible:border-[#04397C] h-11 transition-colors"
                     />
                   </div>
 
@@ -520,7 +569,7 @@ export default function CreateRequestForPayment({
                       placeholder="0"
                       value={qty}
                       onChange={(e) => setQty(e.target.value)}
-                      className="bg-white border-[#E2E8F0] focus-visible:ring-[#2B3A9F] focus-visible:border-[#2B3A9F] h-11 text-center font-mono transition-colors"
+                      className="bg-white border-[#E2E8F0] focus-visible:ring-[#04397C] focus-visible:border-[#04397C] h-11 text-center font-mono transition-colors"
                     />
                   </div>
 
@@ -534,7 +583,7 @@ export default function CreateRequestForPayment({
                       placeholder="0.00"
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
-                      className="bg-white border-[#E2E8F0] focus-visible:ring-[#2B3A9F] focus-visible:border-[#2B3A9F] h-11 font-mono transition-colors"
+                      className="bg-white border-[#E2E8F0] focus-visible:ring-[#04397C] focus-visible:border-[#04397C] h-11 font-mono transition-colors"
                     />
                   </div>
 
@@ -548,7 +597,7 @@ export default function CreateRequestForPayment({
                         type="text"
                         value={formatCurrency(calculatedTotal)}
                         disabled
-                        className="bg-[#F1F5F9] border-[#E2E8F0] h-11 font-mono font-semibold text-[#2B3A9F] pr-8 transition-colors"
+                        className="bg-[#F1F5F9] border-[#E2E8F0] h-11 font-mono font-semibold text-[#04397C] pr-8 transition-colors"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#64748B]">
                         PHP
@@ -559,10 +608,9 @@ export default function CreateRequestForPayment({
                   {/* Charge To - 9 cols */}
                   <div className="md:col-span-9 space-y-2.5">
                     <Label className="text-sm font-bold text-[#475569] flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-[#2B3A9F]" />
+                      <Building2 className="h-4 w-4 text-[#04397C]" />
                       Charge To
                     </Label>
-
                     <SearchableCombobox
                       value={chargeTo}
                       options={chargeToOptions}
@@ -577,12 +625,21 @@ export default function CreateRequestForPayment({
                   {/* Add Button - 3 cols */}
                   <div className="md:col-span-3 flex items-end">
                     <Button
-                      onClick={handleAddLineItem}
+                      onClick={handleSaveLineItem}
                       disabled={!particulars || !qty || !price}
-                      className="w-full bg-[#2B3A9F] hover:bg-[#1E2A7A] text-white h-11 shadow-lg shadow-[#2B3A9F]/25 transition-all hover:shadow-xl hover:shadow-[#2B3A9F]/30 hover:-translate-y-0.5 disabled:shadow-none disabled:translate-y-0 disabled:bg-[#CBD5E1] disabled:text-[#64748B]"
+                      className="w-full bg-[#04397C] hover:bg-[#032d61] text-white transition-colors"
                     >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Item
+                      {editingItemId ? (
+                        <>
+                          <Save className="h-4 w-4 mr-2" />
+                          Update Item
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Item
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -591,7 +648,7 @@ export default function CreateRequestForPayment({
                 <div className="rounded-xl border border-[#E2E8F0] overflow-hidden bg-white shadow-sm">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-[#F1F5F9] hover:bg-[#F1F5F9] border-b-2 border-[#E2E8F0]">
+                      <TableRow className="bg-[#F1F5F9] hover:bg-[#F1F5F9] border-b-2 border-[#04397C]">
                         <TableHead className="w-12 text-center font-bold text-[#475569]">
                           Invoice Number
                         </TableHead>
@@ -604,7 +661,7 @@ export default function CreateRequestForPayment({
                         <TableHead className="w-32 text-right font-bold text-[#475569]">
                           Price
                         </TableHead>
-                        <TableHead className="w-32 text-right font-bold text-[#2B3A9F]">
+                        <TableHead className="w-32 text-right font-bold text-[#04397C]">
                           Total
                         </TableHead>
                         <TableHead className="font-bold text-[#475569]">
@@ -635,7 +692,12 @@ export default function CreateRequestForPayment({
                         lineItems.map((item, index) => (
                           <TableRow
                             key={item.id}
-                            className="group hover:bg-[#F8FAFC] transition-colors border-b border-[#E2E8F0] last:border-b-0"
+                            onClick={() => handleEditLineItem(item)}
+                            className={cn(
+                              "group cursor-pointer hover:bg-[#F8FAFC] transition-colors border-b border-[#E2E8F0] last:border-b-0",
+                              editingItemId === item.id &&
+                                "bg-[#EEF2FF] border-[#04397C]",
+                            )}
                           >
                             <TableCell className="text-center text-[#64748B] font-medium">
                               {item.invoice_number}
@@ -644,14 +706,14 @@ export default function CreateRequestForPayment({
                               {item.particulars}
                             </TableCell>
                             <TableCell className="text-center">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#EEF2FF] text-[#2B3A9F]">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#EEF2FF] text-[#04397C]">
                                 {item.qty}
                               </span>
                             </TableCell>
                             <TableCell className="text-right font-mono text-[#64748B]">
                               {formatCurrency(item.price)}
                             </TableCell>
-                            <TableCell className="text-right font-mono font-bold text-[#2B3A9F]">
+                            <TableCell className="text-right font-mono font-bold text-[#04397C]">
                               {formatCurrency(item.totalAmount)}
                             </TableCell>
                             <TableCell className="text-[#64748B]">
@@ -666,7 +728,7 @@ export default function CreateRequestForPayment({
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleDeleteLineItem(item.id)}
-                                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all hover:bg-[#FEE2E2] hover:text-[#DC2626]"
+                                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all hover:bg-[#FEE2E2] hover:text-[#CE2A28]"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -675,7 +737,7 @@ export default function CreateRequestForPayment({
                         ))
                       )}
                       {lineItems.length > 0 && (
-                        <TableRow className="bg-[#F8FAFC] font-bold border-t-2 border-[#E2E8F0]">
+                        <TableRow className="bg-[#F8FAFC] font-bold border-t-2 border-[#04397C]">
                           <TableCell
                             colSpan={4}
                             className="text-right text-[#1E293B] text-base pr-4"
@@ -699,7 +761,6 @@ export default function CreateRequestForPayment({
           <div className="space-y-6 ">
             {/* Summary Card */}
             <Card className="border-[#E2E8F0] shadow-sm overflow-hidden sticky top-20">
-              <div className="h-1 bg-[#2B3A9F]" />
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg text-[#1E293B] flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-[#2B3A9F] text-white">
