@@ -371,7 +371,7 @@ export interface Request {
   status: string;
   requested_by: string;
   prepared_at?: string;
-  created_on?: string;
+  created_at?: string;
 }
 
 export interface Item {

@@ -220,7 +220,6 @@ async function getOrder(supabase: any, id: string): Promise<Order | null> {
 }
 
 async function getChargeToOptions(supabase: any): Promise<ChargeToOptions[]> {
-  // Fetch companies
   const { data: companiesData, error: companiesError } = await supabase
     .from("companies")
     .select("name")
@@ -230,12 +229,6 @@ async function getChargeToOptions(supabase: any): Promise<ChargeToOptions[]> {
     console.error("Error fetching companies:", companiesError);
   }
 
-  const companies = (companiesData || []).map((company: any) => ({
-    label: company.name,
-    value: company.name,
-  }));
-
-  // Fetch vehicle owners
   const { data: ownersData, error: ownersError } = await supabase
     .from("vehicles")
     .select("owners_first_name, owners_last_name")
@@ -245,13 +238,61 @@ async function getChargeToOptions(supabase: any): Promise<ChargeToOptions[]> {
     console.error("Error fetching vehicle owners:", ownersError);
   }
 
-  const owners = (ownersData || []).map((owner: any) => ({
-    label: `${owner.owners_first_name} ${owner.owners_last_name}`,
-    value: `${owner.owners_first_name} ${owner.owners_last_name}`,
-  }));
+  function normalizeName(value: string) {
+    return value.trim().replace(/\s+/g, " ").toLowerCase();
+  }
 
-  // Merge both arrays
-  return [...companies, ...owners];
+  const uniqueOptionsMap = new Map<string, ChargeToOptions>();
+
+  // Companies
+  for (const company of companiesData || []) {
+    if (!company.name) continue;
+
+    const name = company.name.trim();
+    const key = normalizeName(name);
+
+    if (!uniqueOptionsMap.has(key)) {
+      uniqueOptionsMap.set(key, {
+        label: name,
+        value: name,
+      });
+    }
+  }
+
+  for (const owner of ownersData || []) {
+  const fullName = `${owner.owners_first_name || ""} ${
+    owner.owners_last_name || ""
+  }`.trim();
+
+  if (!fullName) continue;
+
+  const key = normalizeName(fullName);
+
+  if (uniqueOptionsMap.has(key)) {
+    console.log("DUPLICATE FOUND:", {
+      fullName,
+      key,
+    });
+    continue;
+  }
+
+  uniqueOptionsMap.set(key, {
+    label: fullName,
+    value: fullName,
+  });
+}
+
+  // 👇 Add this
+  const result = Array.from(uniqueOptionsMap.values());
+
+return Array.from(
+  new Map(
+    result.map((item) => [
+      item.value.trim().toLowerCase(),
+      item,
+    ])
+  ).values()
+);
 }
 
 export default async function CreateRequestForPaymentPage({
@@ -265,7 +306,11 @@ export default async function CreateRequestForPaymentPage({
 
   return (
     <div>
-      <CreateRequestForPayment order={order} chargeToOptions={options} module="employee-portal/requests" />
+      <CreateRequestForPayment
+        order={order}
+        chargeToOptions={options}
+        module="employee-portal/requests"
+      />
     </div>
   );
 }

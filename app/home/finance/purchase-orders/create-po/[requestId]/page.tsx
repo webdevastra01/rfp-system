@@ -47,6 +47,7 @@ async function getRequest(supabase: any, id: string): Promise<Request | null> {
   // Flatten and return
   return {
     id: data.id,
+    created_at: data.created_at || null,
     request_number: data.request_number,
     title: data.title,
     description: data.description,

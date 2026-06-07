@@ -68,6 +68,7 @@ import {
   statusConfig,
 } from "@/lib/interfaces";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 
 // Helper to calculate total from items
@@ -264,7 +265,9 @@ export default function RequestDetailsPage({
     if (!request?.id) return;
 
     if (entries.length === 0 || totalDebits !== totalCredits) {
-      console.warn("Entries must exist and be balanced");
+      toast.warning(
+        "Cannot submit: Journal entries must exist and be perfectly balanced.",
+      );
       return;
     }
 
@@ -272,9 +275,11 @@ export default function RequestDetailsPage({
     const user = storedUser ? JSON.parse(storedUser) : null;
 
     if (!user?.profile.user_id) {
-      console.error("User not authenticated");
+      toast.error("User session expired. Please log in again.");
       return;
     }
+
+    const toastId = toast.loading("Creating purchase order...");
 
     try {
       const supabase = createClient();
@@ -298,12 +303,20 @@ export default function RequestDetailsPage({
 
       if (error) throw error;
 
-      console.log("Purchase Order created:", data);
+      toast.success(
+        "Purchase order created successfully and sent for approval!",
+        { id: toastId },
+      );
+
+      window.location.href = `/home/finance/purchase-orders`;
 
       // optional UI reset
       setEntries([]);
     } catch (err) {
       console.error("Purchase Order Creation failed:", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "An unexpected error occurred.";
+      toast.error(errorMessage, { id: toastId });
     }
   }
 
@@ -416,7 +429,7 @@ export default function RequestDetailsPage({
                   <DetailItem
                     label="Date Submitted"
                     value={new Date(
-                      request.created_on || "",
+                      request.created_at || "",
                     ).toLocaleDateString("en-US", {
                       weekday: "long",
                       year: "numeric",
@@ -425,19 +438,21 @@ export default function RequestDetailsPage({
                     })}
                     icon={Calendar}
                   />
-                  <DetailItem
-                    label="Required By"
-                    value={new Date(request.requested_by).toLocaleDateString(
-                      "en-US",
-                      {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      },
-                    )}
-                    icon={Calendar}
-                  />
+                  {request.required_by && (
+                    <DetailItem
+                      label="Required By"
+                      value={new Date(request.required_by).toLocaleDateString(
+                        "en-US",
+                        {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        },
+                      )}
+                      icon={Calendar}
+                    />
+                  )}
                 </div>
               </CardContent>
             </Card>

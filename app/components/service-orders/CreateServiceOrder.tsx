@@ -61,6 +61,7 @@ import {
   RequestDetailsPageProps,
   statusConfig,
 } from "@/lib/interfaces";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 // Helper to calculate total from items
@@ -202,7 +203,9 @@ export default function RequestDetailsPage({
     if (!request?.id) return;
 
     if (entries.length === 0 || totalDebits !== totalCredits) {
-      console.warn("Entries must exist and be balanced");
+      toast.warning(
+        "Cannot submit: Journal entries must exist and be perfectly balanced.",
+      );
       return;
     }
 
@@ -210,9 +213,11 @@ export default function RequestDetailsPage({
     const user = storedUser ? JSON.parse(storedUser) : null;
 
     if (!user?.profile.user_id) {
-      console.error("User not authenticated");
+      toast.error("User session expired. Please log in again.");
       return;
     }
+
+    const toastId = toast.loading("Creating service order...");
 
     try {
       const supabase = createClient();
@@ -236,12 +241,23 @@ export default function RequestDetailsPage({
 
       if (error) throw error;
 
-      console.log("Service Order created:", data);
+      toast.success(
+        "Service order created successfully and sent for approval!",
+        { id: toastId },
+      );
+
+      window.location.href = `/home/finance/service-orders`;
 
       // optional UI reset
       setEntries([]);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Service Order Creation failed:", err);
+
+      // Safely extract a message if it's a standard Error object
+      const errorMessage =
+        err instanceof Error ? err.message : "An unexpected error occurred.";
+
+      toast.error(errorMessage, { id: toastId });
     }
   }
 
@@ -502,7 +518,8 @@ export default function RequestDetailsPage({
                               </span>
                             </TableCell>
                             <TableCell className="text-right font-mono text-[#64748B]">
-                              {formatCurrency(item.unitPrice)} / {getUnitName(item.unit)}
+                              {formatCurrency(item.unitPrice)} /{" "}
+                              {getUnitName(item.unit)}
                             </TableCell>
                             <TableCell className="text-right font-mono font-bold text-[#2B3A9F]">
                               {formatCurrency(total)}
@@ -606,27 +623,29 @@ export default function RequestDetailsPage({
             </Card>
 
             {/* Vendor Info */}
-            <Card className="border-[#E2E8F0] shadow-sm">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-base text-[#1E293B] flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-[#14B8A6]" />
-                  Vendor Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <DetailItem
-                  label="Preferred Vendor"
-                  value={request.preferred_vendor}
-                  icon={Building2}
-                  highlight
-                />
-                <DetailItem
-                  label="Contact Person"
-                  value={request.contact_person}
-                  icon={User}
-                />
-              </CardContent>
-            </Card>
+            {(request.preferred_vendor || request.contact_person) && (
+              <Card className="border-[#E2E8F0] shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base text-[#1E293B] flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-[#14B8A6]" />
+                    Vendor Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <DetailItem
+                    label="Preferred Vendor"
+                    value={request.preferred_vendor}
+                    icon={Building2}
+                    highlight
+                  />
+                  <DetailItem
+                    label="Contact Person"
+                    value={request.contact_person}
+                    icon={User}
+                  />
+                </CardContent>
+              </Card>
+            )}
 
             {/* Payment Info */}
             <Card className="border-[#E2E8F0] shadow-sm bg-gradient-to-b from-white to-[#F8FAFC]">
