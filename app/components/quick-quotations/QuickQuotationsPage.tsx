@@ -42,6 +42,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  BaseFormState,
   Classification,
   ClientType,
   ComputationMode,
@@ -59,6 +60,7 @@ import {
   WithoutDriverForm,
 } from "@/lib/interfaces";
 import QuotationModal from "./QuotationModal";
+import { Switch } from "@/components/ui/switch";
 
 const VEHICLE_CATEGORIES: {
   value: VehicleCategory;
@@ -235,7 +237,7 @@ function computeWithoutDriverQuotation(
   const rentalRate = Math.round(baseRate * tfMult * days);
 
   const additionalHoursRate = Math.round(
-    form.additionalHours * (baseRate * 0.08)
+    form.additionalHours * (baseRate * 0.08),
   );
   const cdwRate =
     form.cdw && form.vehicleCategory
@@ -290,45 +292,111 @@ function computeWithoutDriverQuotation(
     mode: "without-driver",
     lineItems: [
       // Main Charges
-      { label: "Rental Rate", value: rentalRate, icon: <Car className="h-4 w-4" /> },
-      { 
-        label: "Additional Hours", 
-        value: additionalHoursRate, 
-        note: `${form.additionalHours} hrs @ ₱150/hr`, 
-        icon: <Clock className="h-4 w-4" /> 
+      {
+        label: "Rental Rate",
+        value: rentalRate,
+        icon: <Car className="h-4 w-4" />,
       },
-      { label: "CDW (Collision Damage Waiver)", value: cdwRate, icon: <Shield className="h-4 w-4" /> },
-      { label: "Carwash", value: carwash, icon: <Droplets className="h-4 w-4" /> },
-      { label: "Delivery Fee", value: deliveryFee, icon: <MapPin className="h-4 w-4" /> },
-      { label: "Pick-up Fee", value: pickupFee, icon: <MapPin className="h-4 w-4" /> },
-      { label: "Overtime Premium", value: overtimePremium, icon: <Clock className="h-4 w-4" /> },
-      { label: "Beyond Operating Hours", value: beyondHours, icon: <Moon className="h-4 w-4" /> },
-      { label: "Hourly Extension Rate", value: hourlyExtension, icon: <Gauge className="h-4 w-4" /> },
-      { label: "Excess Mileage", value: excessMileage, note: `${excessKm} km excess`, icon: <Route className="h-4 w-4" /> },
+      {
+        label: "Additional Hours",
+        value: additionalHoursRate,
+        note: `${form.additionalHours} hrs @ ₱150/hr`,
+        icon: <Clock className="h-4 w-4" />,
+      },
+      {
+        label: "CDW (Collision Damage Waiver)",
+        value: cdwRate,
+        icon: <Shield className="h-4 w-4" />,
+      },
+      {
+        label: "Carwash",
+        value: carwash,
+        icon: <Droplets className="h-4 w-4" />,
+      },
+      {
+        label: "Delivery Fee",
+        value: deliveryFee,
+        icon: <MapPin className="h-4 w-4" />,
+      },
+      {
+        label: "Pick-up Fee",
+        value: pickupFee,
+        icon: <MapPin className="h-4 w-4" />,
+      },
+      {
+        label: "Overtime Premium",
+        value: overtimePremium,
+        icon: <Clock className="h-4 w-4" />,
+      },
+      {
+        label: "Beyond Operating Hours",
+        value: beyondHours,
+        icon: <Moon className="h-4 w-4" />,
+      },
+      {
+        label: "Hourly Extension Rate",
+        value: hourlyExtension,
+        icon: <Gauge className="h-4 w-4" />,
+      },
+      {
+        label: "Excess Mileage",
+        value: excessMileage,
+        note: `${excessKm} km excess`,
+        icon: <Route className="h-4 w-4" />,
+      },
 
       // Subtotal
-      { label: "Subtotal", value: mainSubtotal, isSubtotal: true, icon: <Receipt className="h-4 w-4" /> },
+      {
+        label: "Subtotal",
+        value: mainSubtotal,
+        isSubtotal: true,
+        icon: <Receipt className="h-4 w-4" />,
+      },
 
       // Deduction
-      { label: "Less: Discount (5%)", value: -discount, isDeduction: true, icon: <Percent className="h-4 w-4" /> },
+      {
+        label: "Less: Discount (5%)",
+        value: -discount,
+        isDeduction: true,
+        icon: <Percent className="h-4 w-4" />,
+      },
 
       // Fees
-      { label: "Prepaid / Reservation Fee", value: prepaidReservation, icon: <Wallet className="h-4 w-4" /> },
-      { label: "Deposit (20%)", value: deposit, icon: <Wallet className="h-4 w-4" /> },
-      { label: "Terminal Fee (3.5%)", value: terminalFee, icon: <Percent className="h-4 w-4" /> },
-      { label: "Deposit Fee (3.5%)", value: depositFee, icon: <Percent className="h-4 w-4" /> },
+      {
+        label: "Prepaid / Reservation Fee",
+        value: prepaidReservation,
+        icon: <Wallet className="h-4 w-4" />,
+      },
+      {
+        label: "Deposit (20%)",
+        value: deposit,
+        icon: <Wallet className="h-4 w-4" />,
+      },
+      {
+        label: "Terminal Fee (3.5%)",
+        value: terminalFee,
+        icon: <Percent className="h-4 w-4" />,
+      },
+      {
+        label: "Deposit Fee (3.5%)",
+        value: depositFee,
+        icon: <Percent className="h-4 w-4" />,
+      },
 
       // Overall Total
-      { 
-        label: "Overall Total", 
-        value: overallTotal, 
-        isTotal: true, 
-        isHighlight: true, 
-        icon: <Calculator className="h-4 w-4" /> 
+      {
+        label: "Overall Total",
+        value: overallTotal,
+        isTotal: true,
+        isHighlight: true,
+        icon: <Calculator className="h-4 w-4" />,
       },
     ],
     operationalDetails: [
-      { label: "Total Days Rented", value: `${days} day${days > 1 ? "s" : ""}` },
+      {
+        label: "Total Days Rented",
+        value: `${days} day${days > 1 ? "s" : ""}`,
+      },
       { label: "Total Hours Rented", value: `${totalHours} hours` },
       { label: "Fuel Consumption", value: `${fuelConsumption} L` },
       { label: "Fuel Cost", value: `₱${fuelCost.toLocaleString()}` },
@@ -690,7 +758,7 @@ export default function QuickQuotationPage() {
     useState<QuotationResult | null>(null);
 
   // Without Driver Form State
-  const [wdForm, setWdForm] = useState<WithoutDriverForm>({
+  const [wdForm, setWdForm] = useState<BaseFormState>({
     vehicleCategory: "",
     timeframe: "",
     classification: "",
@@ -698,8 +766,10 @@ export default function QuickQuotationPage() {
     endDate: "",
     additionalHours: 0,
     distance: 0,
-    fuelPrice: 0,
     cdw: false,
+    discount: "",
+    reservationFee: "",
+    beyondOperatingHours: false,
   });
 
   // With Driver Form State
@@ -721,6 +791,10 @@ export default function QuickQuotationPage() {
     accommodationFee: 0,
     mealFee: 0,
     fuelType: "",
+    cdw: false,
+    discount: "",
+    reservationFee: "",
+    beyondOperatingHours: false,
   });
 
   const showDateRange = useMemo(() => {
@@ -988,23 +1062,50 @@ export default function QuickQuotationPage() {
                   title="Rental Options"
                   subtitle="Insurance and protection coverage"
                 />
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    id="cdw"
-                    checked={wdForm.cdw}
-                    onCheckedChange={(checked) =>
-                      setWdForm((prev) => ({
-                        ...prev,
-                        cdw: checked as boolean,
-                      }))
-                    }
-                  />
+
+                {/* CDW Switch */}
+                <div className="flex items-center justify-between py-2">
                   <Label
                     htmlFor="cdw"
                     className="text-sm text-slate-700 cursor-pointer"
                   >
                     Include CDW (Collision Damage Waiver)
                   </Label>
+                  <Switch
+                    id="cdw"
+                    checked={wdForm.cdw}
+                    onCheckedChange={(checked) =>
+                      setWdForm((prev) => ({
+                        ...prev,
+                        cdw: checked,
+                      }))
+                    }
+                  />
+                </div>
+
+                {/* Beyond Operating Hours Switch */}
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex flex-col">
+                    <Label
+                      htmlFor="beyond-hours"
+                      className="text-sm text-slate-700 cursor-pointer"
+                    >
+                      Beyond Operating Hours
+                    </Label>
+                    <span className="text-xs text-slate-500">
+                      Allow pickup/return outside standard hours
+                    </span>
+                  </div>
+                  <Switch
+                    id="beyond-hours"
+                    checked={wdForm.beyondOperatingHours}
+                    onCheckedChange={(checked) =>
+                      setWdForm((prev) => ({
+                        ...prev,
+                        beyondOperatingHours: checked,
+                      }))
+                    }
+                  />
                 </div>
               </FormCard>
 
@@ -1012,9 +1113,10 @@ export default function QuickQuotationPage() {
               <FormCard>
                 <SectionHeader
                   title="Operational Details"
-                  subtitle="Distance, fuel, and time adjustments"
+                  subtitle="Distance and time adjustments"
                 />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {/* Additional Hours */}
                   <div className="space-y-2">
                     <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Additional Hours
@@ -1033,6 +1135,8 @@ export default function QuickQuotationPage() {
                       }
                     />
                   </div>
+
+                  {/* Distance (km) */}
                   <div className="space-y-2">
                     <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Distance (km)
@@ -1054,25 +1158,74 @@ export default function QuickQuotationPage() {
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Fuel Price (₱/L)
+                </div>
+              </FormCard>
+
+              {/* Financial Settings */}
+              <FormCard>
+                <SectionHeader
+                  title="Financial Settings"
+                  subtitle="Configure pricing and fee structures"
+                />
+
+                <div className="space-y-4">
+                  {/* Discount % */}
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="discount"
+                      className="text-sm text-slate-700"
+                    >
+                      Discount %
                     </Label>
                     <div className="relative">
-                      <Fuel className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                       <Input
+                        id="discount"
                         type="number"
-                        min={0}
-                        step={0.01}
+                        min="0"
+                        max="100"
+                        step="0.01"
                         placeholder="0.00"
-                        className="pl-10 border-[#E2E8F0]"
-                        value={wdForm.fuelPrice || ""}
+                        value={wdForm.discount}
                         onChange={(e) =>
                           setWdForm((prev) => ({
                             ...prev,
-                            fuelPrice: Number(e.target.value),
+                            discount: e.target.value,
                           }))
                         }
+                        className="pr-8"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                        %
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Reservation Fee (flat amount) */}
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="reservation-fee"
+                      className="text-sm text-slate-700"
+                    >
+                      Reservation Fee
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                        $
+                      </span>
+                      <Input
+                        id="reservation-fee"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={wdForm.reservationFee}
+                        onChange={(e) =>
+                          setWdForm((prev) => ({
+                            ...prev,
+                            reservationFee: e.target.value,
+                          }))
+                        }
+                        className="pl-7"
                       />
                     </div>
                   </div>
