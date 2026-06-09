@@ -24,7 +24,7 @@ import {
   Calendar,
   User,
   Building2,
-  Hash,
+  Download,
   CreditCard,
   Printer,
   Check,
@@ -107,6 +107,52 @@ export default function RequestForPayment({
       }
     `,
   });
+
+  const exportToCSV = () => {
+    const csvData = rfpList.map((rfp) => ({
+      "RFP Number": rfp.rfp_number,
+      "PO Number": rfp.order_number,
+      "Payable To": rfp.payable_to,
+      Department: rfp.department,
+      "Payment Method": rfp.payment_method,
+      Requestor: rfp.requested_by,
+      Amount: parseAmount(rfp.total_payable),
+      Status: rfp.status,
+      "Request Date": formatDate(rfp.request_date),
+      "Due Date": formatDate(rfp.due_date),
+      "Created At": formatDate(rfp.created_at),
+    }));
+
+    const headers = Object.keys(csvData[0]);
+
+    const csvContent = [
+      headers.join(","),
+      ...csvData.map((row) =>
+        headers
+          .map(
+            (header) =>
+              `"${String(row[header as keyof typeof row] ?? "").replace(/"/g, '""')}"`,
+          )
+          .join(","),
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `rfp-export-${new Date().toISOString().split("T")[0]}.csv`;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  };
 
   // ✅ Updated status config to handle "liquidated" status
   const getStatusBadge = (status: string) => {
@@ -454,13 +500,23 @@ export default function RequestForPayment({
         pagination
         defaultPageSize={5}
         headerActions={
-          <Button
-            onClick={handleReviewOrders}
-            className="bg-[#2B3A9F] hover:bg-[#2B3A9F]/80 text-white"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Create RFP from Approved POs
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={exportToCSV}
+              className="border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-[#2B3A9F] transition-colors shadow-sm"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
+
+            <Button
+              onClick={handleReviewOrders}
+              className="bg-[#2B3A9F] hover:bg-[#2B3A9F]/80 text-white"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create RFP from Approved POs
+            </Button>
+          </div>
         }
         // ✅ Updated actions with conditional Approve/Reject buttons
         // Liquidated RFPs don't show approve/reject actions

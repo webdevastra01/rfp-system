@@ -838,10 +838,9 @@ export interface BaseFormState {
   endDate: string;
   additionalHours: number;
   distance: number;
-  fuelPrice: number;
-}
-
-export interface WithoutDriverForm extends BaseFormState {
+  discount: string;
+  reservationFee: string;
+  beyondOperatingHours: boolean;
   cdw: boolean;
 }
 
@@ -855,6 +854,7 @@ export interface WithDriverForm extends BaseFormState {
   accommodationFee: number;
   mealFee: number;
   fuelType: FuelType | "";
+  fuelPrice: number;
 }
 
 export interface QuotationLineItem {
