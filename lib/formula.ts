@@ -299,7 +299,7 @@ const UNLI_MILEAGE_RATES: UnlimitedMileageRates = {
   },
 };
 
-export function getVehiclePricing(
+function getVehiclePricing(
   category: VehicleCategory,
   hours: number,
   classification?: VehicleClassification,
@@ -387,3 +387,10 @@ function calculateBeyondOperatingHoursFee(
     fee: affectedDays * beyondOperatingHoursRate,
   };
 }
+
+export {
+  RATES,
+  UNLI_MILEAGE_RATES,
+  getVehiclePricing,
+  calculateBeyondOperatingHoursFee,
+};

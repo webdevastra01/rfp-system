@@ -339,17 +339,132 @@ async function rejectRFP(id: string) {
   revalidatePath("/request-for-payment");
 }
 
+export async function getRFPsWithOrderDetails(supabase: any) {
+  // 1. Fetch RFPs
+  const { data: rfps, error: rfpError } = await supabase
+    .from("requests_for_payment")
+    .select(`
+      id,
+      rfp_number,
+      created_at,
+      due_date,
+      requested_by,
+      payable_to,
+      payment_method,
+      order_number,
+      total_payable
+    `);
+
+  if (rfpError) throw rfpError;
+  if (!rfps?.length) return [];
+
+  const orderNumbers = rfps.map((r: any) => r.order_number);
+
+  // 2. Fetch matching Service Orders
+  const { data: serviceOrders, error: serviceError } = await supabase
+    .from("service_orders")
+    .select(`
+      order_number,
+      service_request:service_request_id (
+        id,
+        description,
+        vehicle:vehicles (
+          plate_number,
+          car_type,
+          owners_first_name,
+          owners_last_name
+        )
+      )
+    `)
+    .in("order_number", orderNumbers);
+
+  if (serviceError) throw serviceError;
+
+  // 3. Fetch matching Purchase Orders
+  const { data: purchaseOrders, error: purchaseError } = await supabase
+    .from("purchase_orders")
+    .select(`
+      order_number,
+      purchase_request:purchase_request_id (
+        id,
+        description,
+        vehicle:vehicles (
+          plate_number,
+          car_type,
+          owners_first_name,
+          owners_last_name
+        )
+      )
+    `)
+    .in("order_number", orderNumbers);
+
+  if (purchaseError) throw purchaseError;
+
+  // 4. Create lookup maps
+  const serviceMap = new Map(
+    (serviceOrders ?? []).map((order: any) => [
+      order.order_number,
+      order,
+    ]),
+  );
+
+  const purchaseMap = new Map(
+    (purchaseOrders ?? []).map((order: any) => [
+      order.order_number,
+      order,
+    ]),
+  );
+
+  // 5. Merge everything together
+  return rfps.map((rfp: any) => {
+    const serviceOrder = serviceMap.get(rfp.order_number) as any;
+    const purchaseOrder = purchaseMap.get(rfp.order_number) as any;
+
+    if (serviceOrder) {
+      return {
+        ...rfp,
+        order_type: "service",
+        description:
+          serviceOrder.service_request?.description ?? null,
+        vehicle:
+          serviceOrder.service_request?.vehicle ?? null,
+      };
+    }
+
+    if (purchaseOrder) {
+      return {
+        ...rfp,
+        order_type: "purchase",
+        description:
+          purchaseOrder.purchase_request?.description ?? null,
+        vehicle:
+          purchaseOrder.purchase_request?.vehicle ?? null,
+      };
+    }
+
+    return {
+      ...rfp,
+      order_type: null,
+      description: null,
+      vehicle: null,
+    };
+  });
+}
+
 export default async function RequestForPaymentPage() {
   const supabase = await createClient();
 
   const orders = await getOrders(supabase);
   const rfps = await getRPFs(supabase);
 
+  const rfpExportData = await getRFPsWithOrderDetails(supabase);
+
   return (
     <div>
       <RequestForPayment
         orders={orders}
         rfps={rfps}
+        rfpExportData={rfpExportData}
         onApprove={approveRFP}
         onReject={rejectRFP}
         module="finance"
