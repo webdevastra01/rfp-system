@@ -35,11 +35,7 @@ export interface SelectedRequest {
   description: string;
 }
 
-export interface InfoItemProps {
-  label: string;
-  value: React.ReactNode;
-  className?: string;
-}
+
 
 export interface User {
   id: string;
@@ -278,7 +274,7 @@ export interface BanksDialogProps {
   onBanksChange?: (banks: Bank[]) => void;
 }
 
-export interface PaymentMethod {
+export interface PaymentMethodInterface {
   payment_method_id: string;
   name: string;
 }
@@ -286,9 +282,10 @@ export interface PaymentMethod {
 export interface PaymentMethodsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  paymentMethods: PaymentMethod[];
-  onPaymentMethodsChange?: (paymentMethods: PaymentMethod[]) => void;
+  paymentMethods: PaymentMethodInterface[];
+  onPaymentMethodsChange?: (paymentMethods: PaymentMethodInterface[]) => void;
 }
+
 
 // Permission Types
 export interface PermissionAction {
@@ -830,6 +827,8 @@ export type Coverage = "davao" | "region" | "mindanao";
 export type DrivingTerm = "long-term-parking" | "back-forth";
 export type FuelType = "diesel" | "gasoline";
 
+export type PaymentMethod = "cash" | "card" | "";
+
 export interface BaseFormState {
   vehicleCategory: VehicleCategory | "";
   timeframe: Timeframe | "";
@@ -838,8 +837,16 @@ export interface BaseFormState {
   endDate: string;
   additionalHours: number;
   distance: number;
-  discount: string;
-  reservationFee: string;
+
+  /** Flat security deposit amount (₱), shown as separate line item */
+  deposit: string;
+
+  /** Percentage applied to the main subtotal */
+  discountPercent: string;
+
+  /** If card, add 3.5% terminal fee */
+  paymentMethod: PaymentMethod;
+
   beyondOperatingHours: boolean;
   cdw: boolean;
 }
@@ -856,6 +863,7 @@ export interface WithDriverForm extends BaseFormState {
   fuelType: FuelType | "";
   fuelPrice: number;
 }
+
 
 export interface QuotationLineItem {
   label: string;

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from "react";
+
 import {
   Calculator,
   Car,
@@ -10,7 +11,6 @@ import {
   Calendar,
   Clock,
   ChevronRight,
-  FileText,
   Check,
   Percent,
   Wallet,
@@ -25,10 +25,11 @@ import {
   ArrowLeftRight,
   UtensilsCrossed,
   Hotel,
-  Gauge,
   Route,
   AlertCircle,
+  CreditCard,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +41,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   BaseFormState,
   Classification,
@@ -57,10 +57,16 @@ import {
   TripType,
   VehicleCategory,
   WithDriverForm,
-  WithoutDriverForm,
 } from "@/lib/interfaces";
+
+import {
+  RATES,
+  getVehiclePricing,
+  calculateBeyondOperatingHoursFee,
+} from "@/lib/formula";
 import QuotationModal from "./QuotationModal";
 import { Switch } from "@/components/ui/switch";
+
 
 const VEHICLE_CATEGORIES: {
   value: VehicleCategory;
@@ -80,12 +86,6 @@ const TIMEFRAMES: { value: Timeframe; label: string }[] = [
   { value: "8h", label: "8 Hours" },
   { value: "12h", label: "12 Hours" },
   { value: "24h", label: "24 Hours" },
-];
-
-const CLASSIFICATIONS: { value: Classification; label: string }[] = [
-  { value: "primo", label: "Primo" },
-  { value: "budget-mile", label: "Budget Mile" },
-  { value: "premium", label: "Premium" },
 ];
 
 const FUEL_SETUPS: { value: FuelSetup; label: string }[] = [
@@ -154,24 +154,6 @@ const FUEL_TYPES: { value: FuelType; label: string }[] = [
   { value: "gasoline", label: "Gasoline" },
 ];
 
-// ─── Rate Engine (Mock Business Logic) ───────────────────────────────────────
-
-const BASE_RATES: Record<VehicleCategory, Record<Classification, number>> = {
-  compact: { primo: 1800, "budget-mile": 1500, premium: 2200 },
-  sedan: { primo: 2200, "budget-mile": 1800, premium: 2800 },
-  mpv: { primo: 2800, "budget-mile": 2400, premium: 3500 },
-  suv: { primo: 3200, "budget-mile": 2800, premium: 4000 },
-  pickup: { primo: 2500, "budget-mile": 2200, premium: 3000 },
-  wagon: { primo: 2600, "budget-mile": 2300, premium: 3200 },
-  van: { primo: 3500, "budget-mile": 3000, premium: 4200 },
-};
-
-const TIMEFRAME_MULTIPLIERS: Record<Timeframe, number> = {
-  "8h": 0.6,
-  "12h": 0.8,
-  "24h": 1.0,
-};
-
 const COVERAGE_MULTIPLIERS: Record<Coverage, number> = {
   davao: 1.0,
   region: 1.25,
@@ -193,16 +175,6 @@ const DRIVER_FEE_RATES: Record<VehicleCategory, number> = {
   van: 1200,
 };
 
-const CDW_RATES: Record<VehicleCategory, number> = {
-  compact: 300,
-  sedan: 350,
-  mpv: 400,
-  suv: 450,
-  pickup: 350,
-  wagon: 400,
-  van: 500,
-};
-
 function computeDays(startDate: string, endDate: string): number {
   if (!startDate || !endDate) return 1;
   const start = new Date(startDate);
@@ -213,8 +185,24 @@ function computeDays(startDate: string, endDate: string): number {
   return Math.max(1, diff + 1);
 }
 
+const categoryMap = {
+  compact: "Compact",
+  sedan: "Sedan",
+  mpv: "MPV",
+  suv: "SUV",
+  pickup: "Pick-up",
+  wagon: "Wagon",
+  van: "Van",
+} as const;
+
+const classificationMap = {
+  "budget-mile": "Budget Mile",
+  primo: "Primo",
+  premium: "Premium",
+} as const;
+
 function computeWithoutDriverQuotation(
-  form: WithoutDriverForm,
+  form: BaseFormState,
 ): QuotationResult {
   const days =
     form.timeframe === "24h" && form.startDate && form.endDate
@@ -225,38 +213,43 @@ function computeWithoutDriverQuotation(
     form.timeframe === "8h" ? 8 : form.timeframe === "12h" ? 12 : 24;
   const totalHours = days * hours + form.additionalHours;
 
-  const baseRate =
-    form.vehicleCategory && form.classification
-      ? (BASE_RATES[form.vehicleCategory]?.[form.classification] ?? 2000)
-      : 2000;
+  const category =
+    categoryMap[
+      form.vehicleCategory as keyof typeof categoryMap
+    ];
 
-  const tfMult = form.timeframe
-    ? (TIMEFRAME_MULTIPLIERS[form.timeframe] ?? 1)
-    : 1;
+  const classification =
+    classificationMap[
+      form.classification as keyof typeof classificationMap
+    ];
 
-  const rentalRate = Math.round(baseRate * tfMult * days);
+  const pricing = getVehiclePricing(category, hours, classification);
 
-  const additionalHoursRate = Math.round(
-    form.additionalHours * (baseRate * 0.08),
-  );
-  const cdwRate =
-    form.cdw && form.vehicleCategory
-      ? Math.round(CDW_RATES[form.vehicleCategory] ?? 350)
+  const rentalRate = pricing.rental_rate! * days;
+
+  const additionalHoursRate = form.additionalHours * pricing.excess_hourly_rate;
+
+  const beyondHoursFee =
+    form.beyondOperatingHours && form.startDate && form.endDate
+      ? calculateBeyondOperatingHoursFee(
+          new Date(form.startDate),
+          new Date(form.endDate),
+          300,
+        ).fee
       : 0;
 
-  const carwash = Math.round(rentalRate * 0.02);
-  const deliveryFee = Math.round(rentalRate * 0.03);
-  const pickupFee = Math.round(rentalRate * 0.03);
-  const overtimePremium =
-    form.additionalHours > 0 ? Math.round(additionalHoursRate * 0.15) : 0;
-  const beyondHours =
-    form.additionalHours > 4 ? Math.round(additionalHoursRate * 0.2) : 0;
-  const hourlyExtension = Math.round(form.additionalHours * 150);
+  const cdwRate = form.cdw ? pricing.cdw * days : 0;
+
+  const carwash = pricing.carwash_fee * days;
+
+  const deliveryFee = 0;
+  const pickupFee = 0;
 
   const fuelConsumption = Math.round(form.distance * 0.12 * 10) / 10;
-  const fuelCost = Math.round(fuelConsumption * (form.fuelPrice || 0));
+
+  const fuelCost = 0;
   const excessKm = Math.max(0, form.distance - days * 100);
-  const excessMileage = Math.round(excessKm * 15);
+  const excessMileage = excessKm * pricing.excess_km_rate;
 
   // === Main Charges Subtotal ===
   const mainSubtotal =
@@ -266,31 +259,30 @@ function computeWithoutDriverQuotation(
     carwash +
     deliveryFee +
     pickupFee +
-    overtimePremium +
-    beyondHours +
-    hourlyExtension +
+    beyondHoursFee +
     excessMileage;
 
-  const discount = Math.round(mainSubtotal * 0.05);
+  const discountPercent = Number(form.discountPercent || 0) || 0;
+  const discountAmount = Math.round(mainSubtotal * (discountPercent / 100));
+  const discountedSubtotal = mainSubtotal - discountAmount;
 
-  const subtotalAfterDiscount = mainSubtotal - discount;
+  const terminalFee =
+    form.paymentMethod === "card" ? Math.round(discountedSubtotal * 0.035) : 0;
 
-  // Additional Fees
-  const prepaidReservation = Math.round(subtotalAfterDiscount * 0.3); // or use mainSubtotal
-  const deposit = Math.round(subtotalAfterDiscount * 0.2);
-  const terminalFee = Math.round(subtotalAfterDiscount * 0.035);
-  const depositFee = Math.round(deposit * 0.035);
+  // Deposit is included in the total amount due.
+  const depositAmount = Math.round(Number(form.deposit || 0) || 0);
 
   const overallTotal =
-    subtotalAfterDiscount +
-    prepaidReservation +
-    deposit +
+    discountedSubtotal +
     terminalFee +
-    depositFee;
+    depositAmount;
+
 
   return {
+
     mode: "without-driver",
     lineItems: [
+
       // Main Charges
       {
         label: "Rental Rate",
@@ -300,7 +292,7 @@ function computeWithoutDriverQuotation(
       {
         label: "Additional Hours",
         value: additionalHoursRate,
-        note: `${form.additionalHours} hrs @ ₱150/hr`,
+        note: `${form.additionalHours} hrs @ ₱${pricing.excess_hourly_rate}/hr`,
         icon: <Clock className="h-4 w-4" />,
       },
       {
@@ -324,66 +316,53 @@ function computeWithoutDriverQuotation(
         icon: <MapPin className="h-4 w-4" />,
       },
       {
-        label: "Overtime Premium",
-        value: overtimePremium,
-        icon: <Clock className="h-4 w-4" />,
-      },
-      {
         label: "Beyond Operating Hours",
-        value: beyondHours,
+        value: beyondHoursFee,
         icon: <Moon className="h-4 w-4" />,
-      },
-      {
-        label: "Hourly Extension Rate",
-        value: hourlyExtension,
-        icon: <Gauge className="h-4 w-4" />,
       },
       {
         label: "Excess Mileage",
         value: excessMileage,
-        note: `${excessKm} km excess`,
+        note: `${excessKm} km @ ₱${pricing.excess_km_rate}/km`,
         icon: <Route className="h-4 w-4" />,
       },
 
-      // Subtotal
+      // Subtotal + Discounts + Fees
       {
         label: "Subtotal",
         value: mainSubtotal,
         isSubtotal: true,
         icon: <Receipt className="h-4 w-4" />,
       },
-
-      // Deduction
       {
-        label: "Less: Discount (5%)",
-        value: -discount,
+        label: `Less: Discount (${discountPercent}%)`,
+        value: -discountAmount,
         isDeduction: true,
         icon: <Percent className="h-4 w-4" />,
       },
+      ...(terminalFee > 0
+        ? [
+            {
+              label: "Terminal Fee (Card 3.5%)",
+              value: terminalFee,
+              icon: <CreditCard className="h-4 w-4" />,
+            },
+          ]
+        : []),
 
-      // Fees
-      {
-        label: "Prepaid / Reservation Fee",
-        value: prepaidReservation,
-        icon: <Wallet className="h-4 w-4" />,
-      },
-      {
-        label: "Deposit (20%)",
-        value: deposit,
-        icon: <Wallet className="h-4 w-4" />,
-      },
-      {
-        label: "Terminal Fee (3.5%)",
-        value: terminalFee,
-        icon: <Percent className="h-4 w-4" />,
-      },
-      {
-        label: "Deposit Fee (3.5%)",
-        value: depositFee,
-        icon: <Percent className="h-4 w-4" />,
-      },
+      // Deposit is included in the total amount due.
+      ...(depositAmount > 0
+        ? [
+            {
+              label: "Deposit",
+              value: depositAmount,
+              icon: <Wallet className="h-4 w-4" />,
+            },
+          ]
+        : []),
 
-      // Overall Total
+
+      // Overall Total (cash-to-collect for the remainder)
       {
         label: "Overall Total",
         value: overallTotal,
@@ -406,6 +385,7 @@ function computeWithoutDriverQuotation(
   };
 }
 
+
 function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
   const days =
     form.timeframe === "24h" && form.startDate && form.endDate
@@ -417,14 +397,25 @@ function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
 
   const totalHours = days * hours + form.additionalHours;
 
-  const baseRate =
-    form.vehicleCategory && form.classification
-      ? (BASE_RATES[form.vehicleCategory]?.[form.classification] ?? 2000)
-      : 2000;
+  const category =
+    categoryMap[
+      form.vehicleCategory as keyof typeof categoryMap
+    ];
 
-  const tfMult = form.timeframe
-    ? (TIMEFRAME_MULTIPLIERS[form.timeframe] ?? 1)
-    : 1;
+  const classification =
+    classificationMap[
+      form.classification as keyof typeof classificationMap
+    ];
+
+  const pricing = getVehiclePricing(
+    category,
+    hours,
+    classification,
+  );
+
+  const baseRate = pricing.rental_rate ?? 0;
+
+
 
   const covMult = form.coverage
     ? (COVERAGE_MULTIPLIERS[form.coverage] ?? 1)
@@ -435,7 +426,8 @@ function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
     : 1;
 
   // === Main Calculations ===
-  const rentalRate = Math.round(baseRate * tfMult * covMult * eventMult * days);
+  const rentalRate = Math.round(baseRate * covMult * eventMult * days);
+
 
   const driverRate = form.vehicleCategory
     ? (DRIVER_FEE_RATES[form.vehicleCategory] ?? 1000)
@@ -447,8 +439,6 @@ function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
     form.additionalHours * (baseRate * 0.08),
   );
   const additionalHoursDriver = Math.round(form.additionalHours * 200);
-
-  const cdwRate = 0;
   const carwash = Math.round(rentalRate * 0.02);
   const accommodation = Math.round((form.accommodationFee || 0) * days);
   const meal = Math.round((form.mealFee || 0) * days);
@@ -476,16 +466,24 @@ function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
     excessMileage +
     nightDiff;
 
-  const discountPercent = form.clientType === "corporate" ? 0.08 : 0.03;
-  const discount = Math.round(subtotal * discountPercent);
+  const discountPercent = Number(form.discountPercent || 0) || 0;
+  const discountAmount = Math.round(subtotal * (discountPercent / 100));
 
-  const totalAfterDiscount = subtotal - discount;
+  const subtotalAfterDiscount = subtotal - discountAmount;
 
-  // Additional Fees
-  const terminalFee = Math.round(totalAfterDiscount * 0.035);
-  const reservationFee = Math.round(totalAfterDiscount * 0.05);
+  const terminalFee =
+    form.paymentMethod === "card" ? Math.round(subtotalAfterDiscount * 0.035) : 0;
 
-  const finalTotal = totalAfterDiscount + terminalFee + reservationFee;
+  // Deposit is included in the total amount due.
+  const depositAmount = Math.round(Number(form.deposit || 0) || 0);
+
+  const finalTotal =
+    subtotalAfterDiscount +
+    terminalFee +
+    depositAmount;
+
+
+
 
   // === Line Items (Clean & Categorized) ===
   const lineItems: QuotationLineItem[] = [
@@ -533,63 +531,67 @@ function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
       note: form.fuelSetup === "all-in" ? "All-in" : "Renter pays",
       icon: <Fuel className="h-4 w-4" />,
     },
-    {
-      label: "Excess Mileage",
-      value: excessMileage,
-      note: `${excessKm} km excess`,
-      icon: <Route className="h-4 w-4" />,
-    },
+      {
+        label: "Excess Mileage",
+        value: excessMileage,
+        note: `${excessKm} km @ ₱${pricing.excess_km_rate}/km`,
+        icon: <Route className="h-4 w-4" />,
+      },
     {
       label: "Night Differential",
       value: nightDiff,
       icon: <Moon className="h-4 w-4" />,
     },
 
-    // Subtotal
-    {
-      label: "Subtotal",
-      value: subtotal,
-      isSubtotal: true,
-      icon: <Receipt className="h-4 w-4" />,
-    },
+      // Subtotal
+      {
+        label: "Subtotal",
+        value: subtotal,
+        isSubtotal: true,
+        icon: <Receipt className="h-4 w-4" />,
+      },
 
-    // Deduction
-    {
-      label: `Less: Discount (${discountPercent * 100}%)`,
-      value: -discount,
-      isDeduction: true,
-      icon: <Percent className="h-4 w-4" />,
-    },
+      // Deduction / Discount
+      {
+        label: `Less: Discount (${discountPercent}%)`,
+        value: -discountAmount,
+        isDeduction: true,
+        icon: <Percent className="h-4 w-4" />,
+      },
 
-    // Total
-    {
-      label: "Total",
-      value: totalAfterDiscount,
-      isTotal: true,
-      icon: <Receipt className="h-4 w-4" />,
-    },
+      // Terminal fee (only for Card)
+      ...(terminalFee > 0
+        ? [
+            {
+              label: "Terminal Fee (Card 3.5%)",
+              value: terminalFee,
+              icon: <CreditCard className="h-4 w-4" />,
+            },
+          ]
+        : []),
 
-    // Fees
-    {
-      label: "Terminal Fee (3.5%)",
-      value: terminalFee,
-      icon: <Percent className="h-4 w-4" />,
-    },
-    {
-      label: "Reservation Fee (5%)",
-      value: reservationFee,
-      icon: <Wallet className="h-4 w-4" />,
-    },
+      // Deposit (separate line item, excluded from total due)
+      ...(depositAmount > 0
+        ? [
+            {
+              label: "Deposit",
+              value: depositAmount,
+              icon: <Wallet className="h-4 w-4" />,
+            },
+          ]
+        : []),
 
-    // Overall Total
-    {
-      label: "Overall Total",
-      value: finalTotal,
-      isTotal: true,
-      isHighlight: true,
-      icon: <Calculator className="h-4 w-4" />,
-    },
+      // Overall Total
+      {
+        label: "Overall Total",
+        value: finalTotal,
+        isTotal: true,
+        isHighlight: true,
+        icon: <Calculator className="h-4 w-4" />,
+      },
+
   ];
+
 
   // Corporate Markup (if applicable)
   if (form.clientType === "corporate") {
@@ -766,10 +768,13 @@ export default function QuickQuotationPage() {
     endDate: "",
     additionalHours: 0,
     distance: 0,
-    cdw: false,
-    discount: "",
-    reservationFee: "",
+
+    deposit: "2000",
+    discountPercent: "",
+    paymentMethod: "",
+
     beyondOperatingHours: false,
+    cdw: false,
   });
 
   // With Driver Form State
@@ -781,6 +786,7 @@ export default function QuickQuotationPage() {
     endDate: "",
     additionalHours: 0,
     distance: 0,
+
     fuelPrice: 0,
     fuelSetup: "",
     tripType: "",
@@ -791,11 +797,15 @@ export default function QuickQuotationPage() {
     accommodationFee: 0,
     mealFee: 0,
     fuelType: "",
-    cdw: false,
-    discount: "",
-    reservationFee: "",
+
+    deposit: "",
+    discountPercent: "",
+    paymentMethod: "",
+
     beyondOperatingHours: false,
+    cdw: false,
   });
+
 
   const showDateRange = useMemo(() => {
     const tf =
@@ -819,14 +829,16 @@ export default function QuickQuotationPage() {
       return (
         wdForm.vehicleCategory &&
         wdForm.timeframe &&
-        wdForm.classification &&
+        ((wdForm.vehicleCategory === "van") ? true : !!wdForm.classification) &&
         wdForm.distance >= 0
+
       );
     }
+
     return (
       wdriverForm.vehicleCategory &&
       wdriverForm.timeframe &&
-      wdriverForm.classification &&
+      (wdriverForm.vehicleCategory === "van" ? true : !!wdriverForm.classification) &&
       wdriverForm.fuelSetup &&
       wdriverForm.tripType &&
       wdriverForm.eventType &&
@@ -836,6 +848,25 @@ export default function QuickQuotationPage() {
       wdriverForm.distance >= 0
     );
   }, [mode, wdForm, wdriverForm]);
+
+  const availableClassifications = useMemo(() => {
+    const selectedCategory =
+      mode === "without-driver"
+        ? wdForm.vehicleCategory
+        : wdriverForm.vehicleCategory;
+
+    if (!selectedCategory) return [];
+
+    const category = categoryMap[selectedCategory];
+
+    const config = RATES[category];
+
+    if ("rate" in config) {
+      return [];
+    }
+
+    return Object.keys(config.rates ?? {});
+  }, [mode, wdForm.vehicleCategory, wdriverForm.vehicleCategory]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -952,39 +983,52 @@ export default function QuickQuotationPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Classification
-                </Label>
-                <Select
-                  value={
-                    mode === "without-driver"
-                      ? wdForm.classification
-                      : wdriverForm.classification
-                  }
-                  onValueChange={(v) => {
-                    if (mode === "without-driver")
-                      setWdForm((prev) => ({
-                        ...prev,
-                        classification: v as Classification,
-                      }));
-                    else
-                      setWdriverForm((prev) => ({
-                        ...prev,
-                        classification: v as Classification,
-                      }));
-                  }}
-                >
-                  <SelectTrigger className="border-[#E2E8F0] bg-white">
-                    <SelectValue placeholder="Select class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CLASSIFICATIONS.map((cls) => (
-                      <SelectItem key={cls.value} value={cls.value}>
-                        {cls.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {(mode === "without-driver"
+                  ? wdForm.vehicleCategory !== "van"
+                  : wdriverForm.vehicleCategory !== "van") && (
+                  <>
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Classification
+                    </Label>
+                    <Select
+                      value={
+                        mode === "without-driver"
+                          ? wdForm.classification
+                          : wdriverForm.classification
+                      }
+                      onValueChange={(v) => {
+                        if (mode === "without-driver")
+                          setWdForm((prev) => ({
+                            ...prev,
+                            classification: v as Classification,
+                          }));
+                        else
+                          setWdriverForm((prev) => ({
+                            ...prev,
+                            classification: v as Classification,
+                          }));
+                      }}
+                    >
+                      <SelectTrigger className="border-[#E2E8F0] bg-white">
+                        <SelectValue placeholder="Select class" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableClassifications.map((cls) => (
+                          <SelectItem
+                            key={cls}
+                            value={
+                              cls === "Budget Mile"
+                                ? "budget-mile"
+                                : cls.toLowerCase()
+                            }
+                          >
+                            {cls}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1161,76 +1205,110 @@ export default function QuickQuotationPage() {
                 </div>
               </FormCard>
 
-              {/* Financial Settings */}
-              <FormCard>
-                <SectionHeader
-                  title="Financial Settings"
-                  subtitle="Configure pricing and fee structures"
-                />
+            {/* Financial Settings */}
+            <FormCard>
+              <SectionHeader
+                title="Financial Settings"
+                subtitle="Apply deposit, discount, and terminal fees"
+              />
 
-                <div className="space-y-4">
-                  {/* Discount % */}
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="discount"
-                      className="text-sm text-slate-700"
-                    >
-                      Discount %
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="discount"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={wdForm.discount}
-                        onChange={(e) =>
-                          setWdForm((prev) => ({
-                            ...prev,
-                            discount: e.target.value,
-                          }))
-                        }
-                        className="pr-8"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
-                        %
-                      </span>
-                    </div>
+              <div className="space-y-4">
+                {/* Deposit (₱) */}
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="deposit"
+                    className="text-sm text-slate-700"
+                  >
+                    Deposit (₱)
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                      ₱
+                    </span>
+                    <Input
+                      id="deposit"
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      placeholder="0.00"
+                      value={wdForm.deposit}
+                      onChange={(e) =>
+                        setWdForm((prev) => ({
+                          ...prev,
+                          deposit: e.target.value,
+                        }))
+                      }
+                      className="pl-7"
+                    />
                   </div>
+                  <p className="text-xs text-slate-500">
+                    Added to the quotation total and shown as a separate line item.
+                  </p>
 
-                  {/* Reservation Fee (flat amount) */}
-                  <div className="space-y-1.5">
-                    <Label
-                      htmlFor="reservation-fee"
-                      className="text-sm text-slate-700"
-                    >
-                      Reservation Fee
-                    </Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
-                        $
-                      </span>
-                      <Input
-                        id="reservation-fee"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={wdForm.reservationFee}
-                        onChange={(e) =>
-                          setWdForm((prev) => ({
-                            ...prev,
-                            reservationFee: e.target.value,
-                          }))
-                        }
-                        className="pl-7"
-                      />
-                    </div>
+
+                </div>
+
+                {/* Discount (%) */}
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="discountPercent"
+                    className="text-sm text-slate-700"
+                  >
+                    Discount (%)
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="discountPercent"
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.01}
+                      placeholder="0.00"
+                      value={wdForm.discountPercent}
+                      onChange={(e) =>
+                        setWdForm((prev) => ({
+                          ...prev,
+                          discountPercent: e.target.value,
+                        }))
+                      }
+                      className="pr-8"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                      %
+                    </span>
                   </div>
                 </div>
-              </FormCard>
+
+                {/* Payment Method */}
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="paymentMethod"
+                    className="text-sm text-slate-700"
+                  >
+                    Payment Method
+                  </Label>
+                  <Select
+                    value={wdForm.paymentMethod}
+                    onValueChange={(v) =>
+                      setWdForm((prev) => ({
+                        ...prev,
+                        paymentMethod: v as "cash" | "card" | "",
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="border-[#E2E8F0] bg-white">
+                      <SelectValue placeholder="Select payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="card">Card (3.5% terminal fee)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </FormCard>
+
+
             </>
           ) : (
             <>
