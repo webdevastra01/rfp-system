@@ -279,17 +279,17 @@ async function getOrders(supabase: any): Promise<Order[]> {
   return merged;
 }
 
-async function getRPFs(supabase: any) {
-  const { data, error } = await supabase
-    .from("requests_for_payment")
-    .select("*")
-    .order("rfp_number", { ascending: true });
-  if (error) {
-    console.error("Error fetching RFPs:", error);
-    return [];
-  }
-  return data || [];
-}
+// async function getRPFs(supabase: any) {
+//   const { data, error } = await supabase
+//     .from("requests_for_payment")
+//     .select("*")
+//     .order("rfp_number", { ascending: true });
+//   if (error) {
+//     console.error("Error fetching RFPs:", error);
+//     return [];
+//   }
+//   return data || [];
+// }
 
 async function approveRFP(id: string) {
   "use server";
@@ -343,17 +343,7 @@ export async function getRFPsWithOrderDetails(supabase: any) {
   // 1. Fetch RFPs
   const { data: rfps, error: rfpError } = await supabase
     .from("requests_for_payment")
-    .select(`
-      id,
-      rfp_number,
-      created_at,
-      due_date,
-      requested_by,
-      payable_to,
-      payment_method,
-      order_number,
-      total_payable
-    `);
+    .select("*");
 
   if (rfpError) throw rfpError;
   if (!rfps?.length) return [];
@@ -455,15 +445,17 @@ export default async function RequestForPaymentPage() {
   const supabase = await createClient();
 
   const orders = await getOrders(supabase);
-  const rfps = await getRPFs(supabase);
+  //const rfps = await getRPFs(supabase);
 
   const rfpExportData = await getRFPsWithOrderDetails(supabase);
+
+  console.log(rfpExportData); 
 
   return (
     <div>
       <RequestForPayment
         orders={orders}
-        rfps={rfps}
+        rfps={rfpExportData}
         rfpExportData={rfpExportData}
         onApprove={approveRFP}
         onReject={rejectRFP}
