@@ -196,7 +196,7 @@ export interface FinanceSettingsProps {
   vehicles: Vehicle[];
   vendors: Vendor[];
   banks: Bank[];
-  methods: PaymentMethod[];
+  methods: PaymentMethodInterface[];
 }
 
 export interface FinanceCardProps {
@@ -830,7 +830,7 @@ export type Coverage = "davao" | "region" | "mindanao";
 export type DrivingTerm = "long-term-parking" | "back-forth";
 export type FuelType = "diesel" | "gasoline";
 
-export type PaymentMethod = "cash" | "card" | "";
+export type PaymentMethod = [];
 
 export interface BaseFormState {
   vehicleCategory: VehicleCategory | "";
