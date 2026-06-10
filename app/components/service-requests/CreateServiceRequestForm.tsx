@@ -170,13 +170,21 @@ export default function CreateServiceRequestForm({
   }, [types]);
 
   const paymentMethodOptions = useMemo(() => {
-    return (
-      paymentMethods?.map((p) => ({
-        ...p,
-        id: p.payment_method_id,
-        name: p.name,
-      })) || []
-    );
+    if (!paymentMethods) return [];
+
+    return paymentMethods
+      .map((p) => {
+        if (typeof p !== "object" || p === null) return null;
+
+        const payment = p as Record<string, any>;
+
+        return {
+          ...payment,
+          id: payment.payment_method_id,
+          name: payment.name,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
   }, [paymentMethods]);
 
   const unitOptions = useMemo(() => {

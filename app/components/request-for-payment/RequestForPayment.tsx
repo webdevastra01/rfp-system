@@ -111,8 +111,17 @@ export default function RequestForPayment({
   });
 
   const exportToExcel = async () => {
-  await exportRFPExcel(rfpExportData);
-};
+    if (!rfpExportData || rfpExportData.length === 0) {
+      console.warn("No RFP data available to export");
+      if (!rfpExportData?.length) {
+        toast.error("No RFP data available to export");
+        return;
+      }
+      return;
+    }
+
+    await exportRFPExcel(rfpExportData);
+  };
 
   // ✅ Updated status config to handle "liquidated" status
   const getStatusBadge = (status: string) => {

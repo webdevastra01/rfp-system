@@ -35,8 +35,6 @@ export interface SelectedRequest {
   description: string;
 }
 
-
-
 export interface User {
   id: string;
   username?: string;
@@ -196,7 +194,7 @@ export interface FinanceSettingsProps {
   vehicles: Vehicle[];
   vendors: Vendor[];
   banks: Bank[];
-  methods: PaymentMethod[];
+  methods: PaymentMethodInterface[];
 }
 
 export interface FinanceCardProps {
@@ -285,7 +283,6 @@ export interface PaymentMethodsDialogProps {
   paymentMethods: PaymentMethodInterface[];
   onPaymentMethodsChange?: (paymentMethods: PaymentMethodInterface[]) => void;
 }
-
 
 // Permission Types
 export interface PermissionAction {
@@ -604,7 +601,7 @@ export interface PurchaseRequestPageProps {
 export interface RequestForPaymentProps {
   orders: Order[];
   rfps: RequestForPaymentInterface[];
-  rfpExportData: any[];
+  rfpExportData?: any[];
   onApprove?: (id: string) => Promise<void> | void;
   onReject?: (id: string) => Promise<void> | void;
   module: string;
@@ -830,7 +827,7 @@ export type Coverage = "davao" | "region" | "mindanao";
 export type DrivingTerm = "long-term-parking" | "back-forth";
 export type FuelType = "diesel" | "gasoline";
 
-export type PaymentMethod = "cash" | "card" | "";
+export type PaymentMethod = [];
 
 export interface BaseFormState {
   vehicleCategory: VehicleCategory | "";
@@ -866,7 +863,6 @@ export interface WithDriverForm extends BaseFormState {
   fuelType: FuelType | "";
   fuelPrice: number;
 }
-
 
 export interface QuotationLineItem {
   label: string;

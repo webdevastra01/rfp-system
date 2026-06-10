@@ -45,7 +45,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import React, { useState, useEffect } from "react";
-import { PaymentMethod, PaymentMethodsDialogProps } from "@/lib/interfaces";
+import {
+  PaymentMethodInterface,
+  PaymentMethodsDialogProps,
+} from "@/lib/interfaces";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
@@ -57,13 +60,12 @@ export default function PaymentMethodsDialog({
 }: PaymentMethodsDialogProps) {
   const supabase = createClient();
   const [searchQuery, setSearchQuery] = useState("");
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(
-    initialPaymentMethods,
-  );
+  const [paymentMethods, setPaymentMethods] = useState<
+    PaymentMethodInterface[]
+  >(initialPaymentMethods);
   const [formOpen, setFormOpen] = useState(false);
-  const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(
-    null,
-  );
+  const [editingMethod, setEditingMethod] =
+    useState<PaymentMethodInterface | null>(null);
 
   // Sync with external paymentMethods prop
   useEffect(() => {
@@ -71,7 +73,7 @@ export default function PaymentMethodsDialog({
   }, [initialPaymentMethods]);
 
   // Form state - only name, no ID input
-  const [formData, setFormData] = useState<Partial<PaymentMethod>>({
+  const [formData, setFormData] = useState<Partial<PaymentMethodInterface>>({
     name: "",
   });
 
@@ -81,7 +83,9 @@ export default function PaymentMethodsDialog({
       m.payment_method_id.includes(searchQuery),
   );
 
-  const updatePaymentMethods = (newPaymentMethods: PaymentMethod[]) => {
+  const updatePaymentMethods = (
+    newPaymentMethods: PaymentMethodInterface[],
+  ) => {
     setPaymentMethods(newPaymentMethods);
     onPaymentMethodsChange?.(newPaymentMethods);
   };
@@ -119,7 +123,7 @@ export default function PaymentMethodsDialog({
     });
   };
 
-  const handleOpenForm = (method?: PaymentMethod) => {
+  const handleOpenForm = (method?: PaymentMethodInterface) => {
     if (method) {
       setEditingMethod(method);
       setFormData({ name: method.name });

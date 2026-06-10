@@ -175,13 +175,17 @@ export default function FinanceSettings({
         <Card className="border-0 shadow-sm bg-white">
           <CardContent className="p-4">
             <p className="text-sm text-slate-500 mb-1">Active Vendors</p>
-            <p className="text-2xl font-bold text-emerald-600">{vendors.length}</p>
+            <p className="text-2xl font-bold text-emerald-600">
+              {vendors.length}
+            </p>
           </CardContent>
         </Card>
         <Card className="border-0 shadow-sm bg-white">
           <CardContent className="p-4">
             <p className="text-sm text-slate-500 mb-1">Partner Vehicles</p>
-            <p className="text-2xl font-bold text-amber-600">{vehicles.length}</p>
+            <p className="text-2xl font-bold text-amber-600">
+              {vehicles.length}
+            </p>
           </CardContent>
         </Card>
         <Card className="border-0 shadow-sm bg-white">
@@ -205,9 +209,17 @@ export default function FinanceSettings({
       />
       <TypesDialog open={typesOpen} onOpenChange={setTypesOpen} types={types} />
       <UnitsDialog open={unitsOpen} onOpenChange={setUnitsOpen} units={units} />
-      <AssetVehiclesDialog open={vehiclesOpen} onOpenChange={setVehiclesOpen} vehicles={vehicles} />
-      <SuppliersDialog open={suppliersOpen} onOpenChange={setSuppliersOpen} vendors={vendors}/>
-      <BanksDialog open={banksOpen} onOpenChange={setBanksOpen} banks={banks}/>
+      <AssetVehiclesDialog
+        open={vehiclesOpen}
+        onOpenChange={setVehiclesOpen}
+        vehicles={vehicles}
+      />
+      <SuppliersDialog
+        open={suppliersOpen}
+        onOpenChange={setSuppliersOpen}
+        vendors={vendors}
+      />
+      <BanksDialog open={banksOpen} onOpenChange={setBanksOpen} banks={banks} />
       <PaymentMethodsDialog
         open={paymentMethodsOpen}
         onOpenChange={setPaymentMethodsOpen}
