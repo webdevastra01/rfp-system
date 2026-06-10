@@ -353,7 +353,8 @@ export async function getRFPsWithOrderDetails(supabase: any) {
   // 2. Fetch matching Service Orders
   const { data: serviceOrders, error: serviceError } = await supabase
     .from("service_orders")
-    .select(`
+    .select(
+      `
       order_number,
       service_request:service_request_id (
         id,
@@ -365,7 +366,8 @@ export async function getRFPsWithOrderDetails(supabase: any) {
           owners_last_name
         )
       )
-    `)
+    `,
+    )
     .in("order_number", orderNumbers);
 
   if (serviceError) throw serviceError;
@@ -373,7 +375,8 @@ export async function getRFPsWithOrderDetails(supabase: any) {
   // 3. Fetch matching Purchase Orders
   const { data: purchaseOrders, error: purchaseError } = await supabase
     .from("purchase_orders")
-    .select(`
+    .select(
+      `
       order_number,
       purchase_request:purchase_request_id (
         id,
@@ -385,24 +388,19 @@ export async function getRFPsWithOrderDetails(supabase: any) {
           owners_last_name
         )
       )
-    `)
+    `,
+    )
     .in("order_number", orderNumbers);
 
   if (purchaseError) throw purchaseError;
 
   // 4. Create lookup maps
   const serviceMap = new Map(
-    (serviceOrders ?? []).map((order: any) => [
-      order.order_number,
-      order,
-    ]),
+    (serviceOrders ?? []).map((order: any) => [order.order_number, order]),
   );
 
   const purchaseMap = new Map(
-    (purchaseOrders ?? []).map((order: any) => [
-      order.order_number,
-      order,
-    ]),
+    (purchaseOrders ?? []).map((order: any) => [order.order_number, order]),
   );
 
   // 5. Merge everything together
@@ -414,10 +412,8 @@ export async function getRFPsWithOrderDetails(supabase: any) {
       return {
         ...rfp,
         order_type: "service",
-        description:
-          serviceOrder.service_request?.description ?? null,
-        vehicle:
-          serviceOrder.service_request?.vehicle ?? null,
+        description: serviceOrder.service_request?.description ?? null,
+        vehicle: serviceOrder.service_request?.vehicle ?? null,
       };
     }
 
@@ -425,10 +421,8 @@ export async function getRFPsWithOrderDetails(supabase: any) {
       return {
         ...rfp,
         order_type: "purchase",
-        description:
-          purchaseOrder.purchase_request?.description ?? null,
-        vehicle:
-          purchaseOrder.purchase_request?.vehicle ?? null,
+        description: purchaseOrder.purchase_request?.description ?? null,
+        vehicle: purchaseOrder.purchase_request?.vehicle ?? null,
       };
     }
 
@@ -449,7 +443,7 @@ export default async function RequestForPaymentPage() {
 
   const rfpExportData = await getRFPsWithOrderDetails(supabase);
 
-  console.log(rfpExportData); 
+  console.log(rfpExportData);
 
   return (
     <div>

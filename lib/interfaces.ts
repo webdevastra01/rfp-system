@@ -35,8 +35,6 @@ export interface SelectedRequest {
   description: string;
 }
 
-
-
 export interface User {
   id: string;
   username?: string;
@@ -285,7 +283,6 @@ export interface PaymentMethodsDialogProps {
   paymentMethods: PaymentMethodInterface[];
   onPaymentMethodsChange?: (paymentMethods: PaymentMethodInterface[]) => void;
 }
-
 
 // Permission Types
 export interface PermissionAction {
@@ -866,7 +863,6 @@ export interface WithDriverForm extends BaseFormState {
   fuelType: FuelType | "";
   fuelPrice: number;
 }
-
 
 export interface QuotationLineItem {
   label: string;
