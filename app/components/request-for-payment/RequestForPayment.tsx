@@ -330,6 +330,19 @@ export default function RequestForPayment({
       ),
     },
     {
+      key: "description",
+      header: "Description",
+      width: "min-w-[200px]",
+      render: (row) => (
+        <div className="flex flex-col">
+          <span className="font-semibold text-slate-900 text-sm line-clamp-1">
+            {row.description}
+          </span>
+          <span className="text-xs text-slate-500">{row.department}</span>
+        </div>
+      ),
+    },
+    {
       key: "payment_method",
       header: "Payment Method",
       width: "w-[130px]",

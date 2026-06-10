@@ -649,6 +649,8 @@ export interface RequestForPaymentInterface {
 
   rfp_number: string;
 
+  description: string;
+
   payable_to: string;
   payment_method: string;
 
