@@ -117,7 +117,7 @@ export default function RequestForPayment({
         toast.error("No RFP data available to export");
         return;
       }
-      return;
+      return;   
     }
 
     await exportRFPExcel(rfpExportData);
@@ -866,7 +866,7 @@ export default function RequestForPayment({
               <Button
                 onClick={() => {
                   setViewDialogOpen(false);
-                  router.push(`/home/finance/liquidation/${selectedRfp.id}`);
+                  router.push(`/home/finance/liquidation/liquidate/${selectedRfp.id}`);
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
