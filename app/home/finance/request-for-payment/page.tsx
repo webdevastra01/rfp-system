@@ -443,8 +443,6 @@ export default async function RequestForPaymentPage() {
 
   const rfpExportData = await getRFPsWithOrderDetails(supabase);
 
-  console.log(rfpExportData);
-
   return (
     <div>
       <RequestForPayment
