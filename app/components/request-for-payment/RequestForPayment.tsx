@@ -29,7 +29,8 @@ import {
   Printer,
   Check,
   X,
-  Wallet, // Added for liquidated status
+  Wallet,
+  Ban, // Added for liquidated status
 } from "lucide-react";
 import { DataTableCard, Column } from "@/app/components/cards/DataTableCard";
 import {
@@ -57,6 +58,7 @@ export default function RequestForPayment({
   orders = [],
   onApprove,
   onReject,
+  onCancel,
   module,
 }: RequestForPaymentProps) {
   const [rfpList, setRfpList] = useState<RequestForPaymentInterface[]>(rfps);
@@ -66,12 +68,13 @@ export default function RequestForPayment({
   const [approvedPODialogOpen, setApprovedPODialogOpen] = useState(false);
   // ✅ Action confirmation dialog states
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
-  const [actionType, setActionType] = useState<"approved" | "rejected" | null>(
-    null,
-  );
+  const [actionType, setActionType] = useState<
+    "approved" | "rejected" | "cancelled" | null
+  >(null);
   // ✅ Loading states for approve/reject actions
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const router = useRouter();
 
   const { hasAction } = usePermissions();
@@ -117,7 +120,7 @@ export default function RequestForPayment({
         toast.error("No RFP data available to export");
         return;
       }
-      return;   
+      return;
     }
 
     await exportRFPExcel(rfpExportData);
@@ -130,7 +133,8 @@ export default function RequestForPayment({
       submitted: "bg-amber-50 text-amber-700 border-amber-200",
       approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
       rejected: "bg-rose-50 text-rose-700 border-rose-200",
-      liquidated: "bg-blue-50 text-blue-700 border-blue-200", // Added liquidated style
+      cancelled: "bg-orange-50 text-orange-700 border-orange-200",
+      liquidated: "bg-blue-50 text-blue-700 border-blue-200",
     };
 
     const icons: Record<string, React.ReactNode> = {
@@ -138,7 +142,15 @@ export default function RequestForPayment({
       submitted: <Clock className="h-3 w-3 mr-1" />,
       approved: <CheckCircle className="h-3 w-3 mr-1" />,
       rejected: <XCircle className="h-3 w-3 mr-1" />,
-      liquidated: <Wallet className="h-3 w-3 mr-1" />, // Added liquidated icon
+      cancelled: <Ban className="h-3 w-3 mr-1" />,
+      liquidated: <Wallet className="h-3 w-3 mr-1" />,
+    };
+
+    // Explicit label overrides for clean layout formatting
+    const getLabel = (status: string) => {
+      if (status === "for approval") return "For Approval";
+      if (status === "cancelled") return "Cancelled";
+      return status.charAt(0).toUpperCase() + status.slice(1);
     };
 
     return (
@@ -150,9 +162,7 @@ export default function RequestForPayment({
         variant="secondary"
       >
         {icons[status]}
-        {status === "for approval"
-          ? "For Approval"
-          : status.charAt(0).toUpperCase() + status.slice(1)}
+        {getLabel(status)}
       </Badge>
     );
   };
@@ -207,7 +217,7 @@ export default function RequestForPayment({
   // ✅ Handle action click from table row
   const handleActionClick = (
     rfp: RequestForPaymentInterface,
-    action: "approved" | "rejected",
+    action: "approved" | "rejected" | "cancelled",
   ) => {
     setSelectedRfp(rfp);
     setActionType(action);
@@ -238,6 +248,27 @@ export default function RequestForPayment({
         });
       } finally {
         setIsApproving(false);
+      }
+    } else if (actionType === "cancelled" && onCancel) {
+      try {
+        setIsCancelling(true);
+        await onCancel(selectedRfp.id);
+        // Update local state
+        setRfpList((prev) =>
+          prev.map((r) =>
+            r.id === selectedRfp.id ? { ...r, status: "cancelled" } : r,
+          ),
+        );
+        toast.success("Request for Payment cancelled successfully", {
+          description: `Request for Payment ${selectedRfp.rfp_number} has been cancelled.`,
+        });
+      } catch (error) {
+        console.error("Failed to cancelled RFP:", error);
+        toast.error("Failed to cancel Request for Payment", {
+          description: `Request for Payment ${selectedRfp.rfp_number} failed to be approved.`,
+        });
+      } finally {
+        setIsCancelling(false);
       }
     } else if (actionType === "rejected" && onReject) {
       try {
@@ -300,8 +331,10 @@ export default function RequestForPayment({
       bgColor: "bg-blue-50",
     },
     {
-      title: "Rejected",
-      value: rfpList.filter((r) => r.status === "rejected").length,
+      title: "Rejected / Cancelled",
+      value: rfpList.filter(
+        (r) => r.status === "rejected" || r.status === "cancelled",
+      ).length,
       icon: XCircle,
       color: "text-rose-600",
       bgColor: "bg-rose-50",
@@ -332,9 +365,8 @@ export default function RequestForPayment({
       render: (row) => (
         <div className="flex flex-col">
           <span className="font-semibold text-slate-900 text-sm line-clamp-1">
-            {row.payable_to}
+            {row.payable_to || "Not Specified"}
           </span>
-          <span className="text-xs text-slate-500">{row.department}</span>
         </div>
       ),
     },
@@ -358,7 +390,9 @@ export default function RequestForPayment({
       render: (row) => (
         <div className="flex items-center gap-1.5">
           <CreditCard className="h-3.5 w-3.5 text-slate-400" />
-          <span className="text-sm text-slate-700">{row.payment_method}</span>
+          <span className="text-sm text-slate-700">
+            {row.payment_method || "Not Specified"}
+          </span>
         </div>
       ),
     },
@@ -513,7 +547,8 @@ export default function RequestForPayment({
               <Eye className="h-3.5 w-3.5 mr-1.5" />
               View
             </Button>
-            {/* ✅ Conditional Approve/Reject buttons - exclude liquidated */}
+
+            {/* Conditional Approve/Reject buttons - exclude liquidated */}
             {canApproveReject &&
               (row.status === "for approval" || row.status === "submitted") && (
                 <>
@@ -537,6 +572,7 @@ export default function RequestForPayment({
                   </Button>
                 </>
               )}
+
             {/* Optional: Add a liquidation action for approved RFPs */}
             {row.status === "approved" && (
               <Button
@@ -549,6 +585,19 @@ export default function RequestForPayment({
               >
                 <Wallet className="h-3.5 w-3.5 mr-1.5" />
                 Liquidate
+              </Button>
+            )}
+
+            {/* ✅ Cancel Button: Shows if status is NOT liquidated and NOT already cancelled */}
+            {row.status !== "liquidated" && row.status !== "cancelled" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleActionClick(row, "cancelled")}
+                className="h-8 px-3 text-xs font-medium border-red-200 text-red-400 hover:bg-red-50 hover:text-red-600 hover:border-red-600 transition-all"
+              >
+                <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                Cancel
               </Button>
             )}
           </div>
@@ -866,7 +915,9 @@ export default function RequestForPayment({
               <Button
                 onClick={() => {
                   setViewDialogOpen(false);
-                  router.push(`/home/finance/liquidation/liquidate/${selectedRfp.id}`);
+                  router.push(
+                    `/home/finance/liquidation/liquidate/${selectedRfp.id}`,
+                  );
                 }}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
@@ -883,15 +934,23 @@ export default function RequestForPayment({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
-              {actionType === "approved" ? (
+              {actionType === "approved" && (
                 <CheckCircle className="h-5 w-5 text-emerald-600" />
-              ) : (
+              )}
+              {actionType === "rejected" && (
                 <XCircle className="h-5 w-5 text-rose-600" />
               )}
-              {actionType === "approved" ? "Approve RFP" : "Reject RFP"}
+              {actionType === "cancelled" && (
+                <Ban className="h-5 w-5 text-orange-600" />
+              )}
+
+              {actionType === "approved" && "Approve RFP"}
+              {actionType === "rejected" && "Reject RFP"}
+              {actionType === "cancelled" && "Cancel RFP"}
             </DialogTitle>
             <DialogDescription className="text-slate-500">
-              Are you sure you want to {actionType}{" "}
+              Are you sure you want to{" "}
+              {actionType === "cancelled" ? "cancel" : actionType}{" "}
               <span className="font-semibold text-slate-900">
                 {selectedRfp?.rfp_number}
               </span>
@@ -904,23 +963,27 @@ export default function RequestForPayment({
               onClick={() => setActionDialogOpen(false)}
               className="border-[#E2E8F0] text-slate-700"
             >
-              Cancel
+              Close
             </Button>
             <Button
               onClick={handleConfirmAction}
-              disabled={isApproving || isRejecting}
+              disabled={isApproving || isRejecting || isCancelling} // Added loading condition if you have one
               className={
                 actionType === "approved"
                   ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                  : "bg-rose-600 hover:bg-rose-700 text-white"
+                  : actionType === "rejected"
+                    ? "bg-rose-600 hover:bg-rose-700 text-white"
+                    : "bg-orange-600 hover:bg-orange-700 text-white" // Orange theme for Cancel confirm button
               }
             >
-              {isApproving || isRejecting ? (
+              {isApproving || isRejecting || isCancelling ? (
                 <Clock className="h-4 w-4 animate-spin" />
               ) : actionType === "approved" ? (
                 "Approve"
-              ) : (
+              ) : actionType === "rejected" ? (
                 "Reject"
+              ) : (
+                "Cancel RFP"
               )}
             </Button>
           </DialogFooter>

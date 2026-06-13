@@ -85,8 +85,6 @@ export default async function LiquidationPage() {
   const rfps = await getApprovedRFPs(supabase);
   const liquidatedRFPs = await getLiquidatedRFPs(supabase);
 
-  console.log(liquidatedRFPs)
-
   return (
     <div>
       <Liquidation

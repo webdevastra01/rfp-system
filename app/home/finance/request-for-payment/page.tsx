@@ -339,6 +339,26 @@ async function rejectRFP(id: string) {
   revalidatePath("/request-for-payment");
 }
 
+async function cancelRFP(id: string) {
+  "use server";
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("requests_for_payment")
+    .update({
+      status: "cancelled",
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error canceling RFP:", error);
+    throw new Error("Failed to cancel RFP");
+  }
+
+  revalidatePath("/request-for-payment");
+}
+
 export async function getRFPsWithOrderDetails(supabase: any) {
   // 1. Fetch RFPs
   const { data: rfps, error: rfpError } = await supabase
@@ -443,8 +463,6 @@ export default async function RequestForPaymentPage() {
 
   const rfpExportData = await getRFPsWithOrderDetails(supabase);
 
-  console.log(rfpExportData);
-
   return (
     <div>
       <RequestForPayment
@@ -453,6 +471,7 @@ export default async function RequestForPaymentPage() {
         rfpExportData={rfpExportData}
         onApprove={approveRFP}
         onReject={rejectRFP}
+        onCancel={cancelRFP}
         module="finance"
       />
     </div>
