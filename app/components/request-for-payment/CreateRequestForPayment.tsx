@@ -34,7 +34,11 @@ import {
   Building2,
   Calendar,
   CheckCircle2,
+  Download,
+  ExternalLink,
+  Eye,
   FileText,
+  ImageIcon,
   Landmark,
   Package,
   Phone,
@@ -51,6 +55,13 @@ import { createClient } from "@/lib/supabase/client";
 import { SearchableCombobox } from "../inputs/SearchableCombobox";
 import { toast } from "sonner"; // Added Sonner toast
 import { useRouter } from "next/navigation";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import Image from "next/image";
 
 function DetailItem({
   label,
@@ -140,6 +151,34 @@ export default function CreateRequestForPayment({
   const [dueDate, setDueDate] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [vendorContact, setVendorContact] = useState("");
+
+  const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
+
+  const getFileName = (url: string) => {
+    try {
+      const pathname = new URL(url).pathname;
+      return decodeURIComponent(pathname.split("/").pop() || "Document");
+    } catch {
+      return "Document";
+    }
+  };
+
+  const isImage = (url: string) => {
+    try {
+      const pathname = new URL(url).pathname;
+      return /\.(jpg|jpeg|png|gif|webp|avif|svg)$/i.test(pathname);
+    } catch {
+      return /\.(jpg|jpeg|png|gif|webp|avif|svg)(?:\?|$)/i.test(url);
+    }
+  };
+
+  const isPdf = (url: string) => {
+    try {
+      return /\.pdf$/i.test(new URL(url).pathname);
+    } catch {
+      return /\.pdf(?:\?|$)/i.test(url);
+    }
+  };
 
   const totalLineItems = useMemo(
     () =>
@@ -367,6 +406,32 @@ export default function CreateRequestForPayment({
     setChargeTo("");
   };
 
+  const DocumentThumbnail = ({
+    url,
+    index,
+  }: {
+    url: string;
+    index: number;
+  }) => {
+    if (isImage(url)) {
+      return (
+        <Image
+          src={url}
+          alt={`Document ${index + 1}`}
+          fill
+          className="object-cover group-hover:scale-105 transition-transform duration-300"
+          sizes="(max-width: 768px) 50vw, 25vw"
+        />
+      );
+    }
+
+    return (
+      <div className="h-32 flex items-center justify-center bg-slate-100">
+        <FileText className="h-10 w-10 text-blue-500" aria-hidden="true" />
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-8 px-4">
       <div className="container mx-auto max-w-7xl">
@@ -403,7 +468,9 @@ export default function CreateRequestForPayment({
             {/* Order Overview */}
             <Card className="border-[#E2E8F0] shadow-sm overflow-hidden pt-0">
               <CardHeader className="bg-[#F8FAFC] border-b border-[#E2E8F0] pt-4">
-                <div className="flex items-center gap-3"> <div className="flex-1">
+                <div className="flex items-center gap-3">
+                  {" "}
+                  <div className="flex-1">
                     <CardTitle className="text-2xl font-bold text-[#1E293B] mb-2">
                       {order.title}
                     </CardTitle>
@@ -463,6 +530,59 @@ export default function CreateRequestForPayment({
               </CardContent>
             </Card>
 
+            <Card className="border-[#E2E8F0] shadow-sm pt-0">
+              <CardHeader className="bg-[#F8FAFC] border-b border-[#E2E8F0] pt-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-[#2B3A9F] text-white">
+                    <FileText className="h-5 w-5" />
+                  </div>
+
+                  <div>
+                    <CardTitle>Supporting Documents</CardTitle>
+                    <CardDescription>
+                      Uploaded attachments for this service order
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="pt-6">
+                {order.supporting_documents?.length ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {order.supporting_documents.map((url, index) => (
+                      <button
+                        key={url}
+                        onClick={() => setSelectedDocument(url)}
+                        className="group relative overflow-hidden rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 h-32 w-full"
+                        aria-label={`View document ${index + 1}`}
+                      >
+                        {isImage(url) ? (
+                          <Image
+                            src={url}
+                            alt={`Document ${index + 1}`}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            sizes="(max-width: 768px) 50vw, 25vw"
+                          />
+                        ) : (
+                          <div className="h-full flex items-center justify-center bg-slate-100">
+                            <FileText
+                              className="h-10 w-10 text-blue-500"
+                              aria-hidden="true"
+                            />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500">
+                    No supporting documents attached.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Additional Information */}
             <Card className="border-[#E2E8F0] shadow-sm pt-0">
               <CardHeader className="bg-[#F8FAFC] border-b border-[#E2E8F0] pt-4">
@@ -518,7 +638,7 @@ export default function CreateRequestForPayment({
                   <div className="p-2 rounded-lg  bg-[#2B3A9F] text-white shadow-sm backdrop-blur-sm">
                     <Package className="h-5 w-5" />
                   </div>
-                  <div> 
+                  <div>
                     <CardTitle className="text-lg text-[#1E293B]">
                       Line Items
                     </CardTitle>
@@ -683,7 +803,7 @@ export default function CreateRequestForPayment({
                               </div>
                               <p className="text-sm max-w-xs">
                                 No line items yet. Fill the form above and click
-                                "Add Item" to get started.
+                                &quot;Add Item&quot; to get started.
                               </p>
                             </div>
                           </TableCell>
@@ -907,6 +1027,77 @@ export default function CreateRequestForPayment({
           </div>
         </div>
       </div>
+      <Dialog
+        open={!!selectedDocument}
+        onOpenChange={() => setSelectedDocument(null)}
+      >
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0 border border-slate-200 shadow-2xl overflow-hidden">
+          {/* Header */}
+          <DialogHeader className="px-5 py-3.5 border-b bg-white shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                {selectedDocument && isImage(selectedDocument) ? (
+                  <ImageIcon className="h-4 w-4 text-blue-500 shrink-0" />
+                ) : (
+                  <FileText className="h-4 w-4 text-red-500 shrink-0" />
+                )}
+                <DialogTitle className="text-sm font-medium text-slate-700 truncate">
+                  {selectedDocument && getFileName(selectedDocument)}
+                </DialogTitle>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs text-slate-500 hover:text-slate-900"
+                  onClick={() => window.open(selectedDocument || "", "_blank")}
+                >
+                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                  Open
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs text-slate-500 hover:text-slate-900"
+                  onClick={() => {
+                    const a = document.createElement("a");
+                    a.href = selectedDocument || "";
+                    a.download = selectedDocument
+                      ? getFileName(selectedDocument)
+                      : "";
+                    a.click();
+                  }}
+                >
+                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                  Download
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {/* Viewer */}
+          <div className="flex-1 bg-slate-50/50 overflow-hidden">
+            {selectedDocument && isImage(selectedDocument) ? (
+              <div className="relative w-full h-full">
+                <Image
+                  src={selectedDocument}
+                  alt="Document preview"
+                  fill
+                  className="object-contain p-4"
+                  sizes="(max-width: 1280px) 95vw, 1280px"
+                  priority
+                />
+              </div>
+            ) : (
+              <iframe
+                src={selectedDocument || ""}
+                className="w-full h-full bg-white"
+                title="Document preview"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
