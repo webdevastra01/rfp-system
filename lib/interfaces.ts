@@ -604,6 +604,7 @@ export interface RequestForPaymentProps {
   rfpExportData?: any[];
   onApprove?: (id: string) => Promise<void> | void;
   onReject?: (id: string) => Promise<void> | void;
+  onCancel?: (id: string) => Promise<void> | void;
   module: string;
 }
 
