@@ -461,8 +461,6 @@ export default async function RequestForPaymentPage() {
   const orders = await getOrders(supabase);
   //const rfps = await getRPFs(supabase);
 
-  console.log(orders)
-
   const rfpExportData = await getRFPsWithOrderDetails(supabase);
 
   return (

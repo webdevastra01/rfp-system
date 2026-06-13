@@ -668,6 +668,7 @@ export interface RequestForPaymentInterface {
   total_payable: string;
 
   line_items: RFPLineItem[];
+  supporting_documents?: string[];
 }
 
 export interface LiquidationPageProps {

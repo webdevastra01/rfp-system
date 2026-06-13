@@ -126,8 +126,6 @@ export default function CreateRequestForPayment({
   chargeToOptions,
   module,
 }: CreateRequestForPaymentPageProps) {
-  console.log("Fetched Items:", JSON.stringify(order?.items, null, 2));
-  // Line Items State
   const [lineItems, setLineItems] = useState<LineItem[]>(
     () =>
       order?.items?.map((item) => ({
@@ -335,6 +333,7 @@ export default function CreateRequestForPayment({
         line_items: itemsPayload, // JSONB column
         requested_by: order.requested_by,
         total_payable: totalLineItems.toString(),
+        supporting_documents: order.supporting_documents,
       });
 
       if (error) throw error;
@@ -546,6 +545,7 @@ export default function CreateRequestForPayment({
                 </div>
               </CardHeader>
 
+              {/* Supporting Documents */}
               <CardContent className="pt-6">
                 {order.supporting_documents?.length ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
