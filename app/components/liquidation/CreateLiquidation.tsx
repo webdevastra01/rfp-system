@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,14 +30,26 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
+  ExternalLink,
+  Download,
+  ImageIcon,
+  Upload,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { CreateLiquidationPageProps } from "@/lib/interfaces";
 import { SearchableCombobox } from "../inputs/SearchableCombobox";
 import { createClient } from "@/lib/supabase/client";
-import { toast } from "sonner"; // Added Sonner toast
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface LiquidationEntry {
   id: string;
@@ -49,7 +61,6 @@ interface LiquidationEntry {
   amount: number;
 }
 
-// ✅ Safe number parsing for string amounts from database
 const parseAmount = (value: string | number | null | undefined): number => {
   if (value === null || value === undefined) return 0;
   if (typeof value === "number") return isNaN(value) ? 0 : value;
@@ -87,18 +98,112 @@ export default function CreateLiquidation({
   vendors,
   module,
 }: CreateLiquidationPageProps) {
-  // Form state
   const [date, setDate] = useState("");
   const [plateNumber, setPlateNumber] = useState("");
   const [supplier, setSupplier] = useState("");
   const [description, setDescription] = useState("");
   const [glAccount, setGlAccount] = useState("");
   const [amount, setAmount] = useState("");
+  const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
+  const [supportingDocs, setSupportingDocs] = useState<string[]>(
+    rfp?.supporting_documents || []
+  );
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const router = useRouter();
-
-  // Entries state
   const [entries, setEntries] = useState<LiquidationEntry[]>([]);
+
+  const isImage = (url: string): boolean => {
+    if (!url) return false;
+    const cleanUrl = url.split("?")[0];
+    const ext = cleanUrl.split(".").pop()?.toLowerCase();
+    return ["jpg", "jpeg", "png", "gif", "webp", "avif", "svg"].includes(ext || "");
+  };
+
+  const getFileName = (url: string): string => {
+    if (!url) return "Document";
+    try {
+      let name = url.split("/").pop() || "Document";
+      name = name.split("?")[0];
+      return decodeURIComponent(name);
+    } catch {
+      return "Document";
+    }
+  };
+
+  // File Upload - Store signed URL in DB
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    const supabase = createClient();
+    const newUrls: string[] = [];
+
+    try {
+      for (const file of Array.from(files)) {
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}.${fileExt}`;
+        const filePath = `documents/liquidations/${rfp.id}/${fileName}`;
+
+        // Upload file
+        const { error: uploadError } = await supabase.storage
+          .from("documents")
+          .upload(filePath, file, { cacheControl: "3600", upsert: false });
+
+        if (uploadError) throw uploadError;
+
+        // Generate signed URL
+        const { data: urlData } = await supabase.storage
+          .from("documents")
+          .createSignedUrl(filePath, 60 * 60 * 24 * 7); // 7 days expiry
+
+        if (urlData?.signedUrl) {
+          newUrls.push(urlData.signedUrl);
+        }
+      }
+
+      const updatedDocs = [...supportingDocs, ...newUrls];
+      setSupportingDocs(updatedDocs);
+
+      const { error: updateError } = await supabase
+        .from("requests_for_payment")
+        .update({ supporting_documents: updatedDocs })
+        .eq("id", rfp.id);
+
+      if (updateError) throw updateError;
+
+      toast.success(`${newUrls.length} file(s) uploaded successfully`);
+    } catch (error) {
+      toast.error("Upload failed", {
+        description: error instanceof Error ? error.message : "Please try again",
+      });
+      console.error(error);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveDocument = async (urlToRemove: string) => {
+    const newDocs = supportingDocs.filter((url) => url !== urlToRemove);
+    setSupportingDocs(newDocs);
+
+    const supabase = createClient();
+    try {
+      const { error } = await supabase
+        .from("requests_for_payment")
+        .update({ supporting_documents: newDocs })
+        .eq("id", rfp.id);
+
+      if (error) throw error;
+      toast.success("Document removed");
+    } catch (error) {
+      toast.error("Failed to remove document");
+      setSupportingDocs(supportingDocs); // revert
+    }
+  };
 
   const handleAddEntry = () => {
     if (!date || !amount || !supplier || !glAccount) {
@@ -116,7 +221,6 @@ export default function CreateLiquidation({
       return;
     }
 
-    // Check if amount exceeds remaining balance (warning only)
     const currentRemaining =
       parseAmount(rfp?.total_payable) -
       entries.reduce((sum, e) => sum + e.amount, 0);
@@ -135,7 +239,6 @@ export default function CreateLiquidation({
 
     setEntries([...entries, newEntry]);
 
-    // Reset form
     setDate("");
     setPlateNumber("");
     setSupplier("");
@@ -143,22 +246,18 @@ export default function CreateLiquidation({
     setGlAccount("");
     setAmount("");
 
-    // Show appropriate toast based on liquidation status
     if (newRemaining < 0) {
-      // Over-liquidation
       const overAmount = Math.abs(newRemaining);
       toast.warning("Entry added with over-liquidation", {
         description: `${supplier} - ${formatCurrency(amountValue)}. Exceeds by ${formatCurrency(overAmount)}.`,
         icon: <AlertTriangle className="h-4 w-4" />,
       });
     } else if (newRemaining === 0) {
-      // Fully liquidated
       toast.success("Entry added - Fully Liquidated", {
         description: `${supplier} - ${formatCurrency(amountValue)}. Balance is now zero.`,
         icon: <CheckCircle2 className="h-4 w-4" />,
       });
     } else {
-      // Under-liquidated (normal)
       toast.success("Entry added", {
         description: `${supplier} - ${formatCurrency(amountValue)}. Remaining: ${formatCurrency(newRemaining)}.`,
       });
@@ -207,13 +306,11 @@ export default function CreateLiquidation({
 
     const supabase = createClient();
 
-    // Show loading toast
     const loadingToast = toast.loading("Submitting liquidation...", {
       description: "Please wait while we process your request.",
     });
 
     try {
-      // Convert entries into JSON snapshot
       const liquidationEntries = entries.map((entry) => {
         const vehicle = vehicles?.find(
           (v) => v.vehicle_id === entry.plateNumber,
@@ -225,7 +322,6 @@ export default function CreateLiquidation({
           car_type: vehicle?.car_type || null,
           owners_first_name: vehicle?.owners_first_name || null,
           owners_last_name: vehicle?.owners_last_name || null,
-
           supplier: entry.supplier,
           description: entry.description,
           gl_account: entry.glAccount,
@@ -236,24 +332,19 @@ export default function CreateLiquidation({
       const { error } = await supabase.from("liquidations").insert({
         rfp_id: rfp.id,
         rfp_number: rfp.rfp_number,
-
         requested_by: rfp.requested_by,
         department: rfp.department,
         payable_to: rfp.payable_to,
         payment_method: rfp.payment_method,
-
         original_amount: originalAmount,
         total_liquidated: totalLiquidated,
         remaining_balance: remainingBalance,
-
         liquidation_entries: liquidationEntries,
-
         status: "submitted",
       });
 
       if (error) throw error;
 
-      // Update RFP status
       const { error: rfpError } = await supabase
         .from("requests_for_payment")
         .update({ status: "liquidated" })
@@ -261,7 +352,6 @@ export default function CreateLiquidation({
 
       if (rfpError) throw rfpError;
 
-      // Dismiss loading and show success
       toast.dismiss(loadingToast);
 
       if (isOverLiquidated) {
@@ -281,12 +371,9 @@ export default function CreateLiquidation({
         });
       }
 
-      // Optional: Reset form after successful submission
       setEntries([]);
-
       router.push(`/home/${module}/liquidation`);
     } catch (error) {
-      // Dismiss loading and show error
       toast.dismiss(loadingToast);
       toast.error("Failed to submit liquidation", {
         description:
@@ -360,7 +447,7 @@ export default function CreateLiquidation({
           </Badge>
         </div>
 
-        {/* RFP Summary Card - Updated to match actual data structure */}
+        {/* RFP Summary Card */}
         <Card className="border-slate-200 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-2">
@@ -370,7 +457,6 @@ export default function CreateLiquidation({
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* Requested By */}
               <div className="space-y-1">
                 <p className="text-xs text-slate-500 uppercase font-medium">
                   Requested By
@@ -388,7 +474,6 @@ export default function CreateLiquidation({
                 </div>
               </div>
 
-              {/* Department */}
               <div className="space-y-1">
                 <p className="text-xs text-slate-500 uppercase font-medium">
                   Department
@@ -401,7 +486,6 @@ export default function CreateLiquidation({
                 </div>
               </div>
 
-              {/* Original Amount */}
               <div className="space-y-1">
                 <p className="text-xs text-slate-500 uppercase font-medium">
                   Original Amount
@@ -414,7 +498,6 @@ export default function CreateLiquidation({
                 </div>
               </div>
 
-              {/* Payment Method */}
               <div className="space-y-1">
                 <p className="text-xs text-slate-500 uppercase font-medium">
                   Payment Method
@@ -427,7 +510,6 @@ export default function CreateLiquidation({
                 </div>
               </div>
 
-              {/* Payable To */}
               <div className="space-y-1 md:col-span-2">
                 <p className="text-xs text-slate-500 uppercase font-medium">
                   Payable To
@@ -440,7 +522,6 @@ export default function CreateLiquidation({
                 </div>
               </div>
 
-              {/* Request Date */}
               <div className="space-y-1">
                 <p className="text-xs text-slate-500 uppercase font-medium">
                   Request Date
@@ -453,7 +534,6 @@ export default function CreateLiquidation({
                 </div>
               </div>
 
-              {/* Due Date */}
               <div className="space-y-1">
                 <p className="text-xs text-slate-500 uppercase font-medium">
                   Due Date
@@ -467,7 +547,6 @@ export default function CreateLiquidation({
               </div>
             </div>
 
-            {/* Remaining Balance Alert */}
             <div
               className={`mt-4 p-3 rounded-lg border ${
                 isBalanced
@@ -518,6 +597,85 @@ export default function CreateLiquidation({
           </CardContent>
         </Card>
 
+        {/* Supporting Documents Card */}
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                <FileText className="h-4 w-4 text-[#2B3A9F]" />
+                Supporting Documents
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="border-[#2B3A9F]/30 text-[#2B3A9F] hover:bg-[#2B3A9F]/10 hover:text-[#2B3A9F]"
+              >
+                {uploading ? "Uploading..." : "Add File"}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+              multiple
+              className="hidden"
+            />
+
+            {supportingDocs.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {supportingDocs.map((url, index) => (
+                  <div
+                    key={index}
+                    className="group relative overflow-hidden rounded-lg border border-slate-200 hover:border-[#2B3A9F]/50 transition-all h-32"
+                  >
+                    <button
+                      onClick={() => setSelectedDocument(url)}
+                      className="w-full h-full focus:outline-none focus:ring-2 focus:ring-[#2B3A9F]/30 rounded-lg"
+                    >
+                      {isImage(url) ? (
+                        <Image
+                          src={url}
+                          alt={getFileName(url)}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          sizes="(max-width: 768px) 50vw, 25vw"
+                        />
+                      ) : (
+                        <div className="h-full flex flex-col items-center justify-center bg-slate-50 gap-2">
+                          <FileText className="h-8 w-8 text-slate-400" />
+                          <span className="text-xs text-slate-500 font-medium px-2 text-center truncate w-full">
+                            {getFileName(url)}
+                          </span>
+                        </div>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveDocument(url);
+                      }}
+                      className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-white/90 shadow-sm opacity-0 group-hover:opacity-100 hover:bg-rose-50 hover:text-rose-600"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <FileText className="h-10 w-10 text-slate-300" />
+                <p className="text-sm text-slate-500">No supporting documents attached.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Entry Form */}
         <Card className="border-l-4 border-l-[#2B3A9F] shadow-sm">
           <CardHeader className="pb-4">
@@ -537,9 +695,7 @@ export default function CreateLiquidation({
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Input Form Section */}
             <div className="bg-slate-50/80 p-5 rounded-xl border border-slate-200 space-y-5">
-              {/* Primary Fields - 3 columns */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-slate-700 flex items-center gap-2">
@@ -586,7 +742,6 @@ export default function CreateLiquidation({
                 </div>
               </div>
 
-              {/* Secondary Fields - 3 columns */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-slate-700 flex items-center gap-2">
@@ -645,7 +800,6 @@ export default function CreateLiquidation({
                 </div>
               </div>
 
-              {/* Vehicle Details - Auto-populated */}
               {selectedPlateNumber && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                   <div className="space-y-2">
@@ -678,7 +832,6 @@ export default function CreateLiquidation({
               )}
             </div>
 
-            {/* Add Entry Button */}
             <div className="flex justify-end">
               <Button
                 onClick={handleAddEntry}
@@ -698,7 +851,6 @@ export default function CreateLiquidation({
 
             <Separator className="bg-slate-200" />
 
-            {/* Entries Table Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -877,7 +1029,6 @@ export default function CreateLiquidation({
               </div>
             </div>
 
-            {/* Footer Actions */}
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
               <Button
                 variant="outline"
@@ -899,6 +1050,75 @@ export default function CreateLiquidation({
           </CardContent>
         </Card>
       </div>
+
+      {/* Document Viewer Dialog */}
+      <Dialog
+        open={!!selectedDocument}
+        onOpenChange={() => setSelectedDocument(null)}
+      >
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0 border border-slate-200 shadow-2xl overflow-hidden">
+          <DialogHeader className="px-5 py-3.5 border-b bg-white shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                {selectedDocument && isImage(selectedDocument) ? (
+                  <ImageIcon className="h-4 w-4 text-blue-500" />
+                ) : (
+                  <FileText className="h-4 w-4 text-red-500" />
+                )}
+                <DialogTitle className="text-sm font-medium text-slate-700 truncate">
+                  {selectedDocument && getFileName(selectedDocument)}
+                </DialogTitle>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.open(selectedDocument || "", "_blank")}
+                >
+                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                  Open
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const a = document.createElement("a");
+                    a.href = selectedDocument || "";
+                    a.download = selectedDocument
+                      ? getFileName(selectedDocument)
+                      : "";
+                    a.click();
+                  }}
+                >
+                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                  Download
+                </Button>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 bg-slate-50/50 overflow-hidden">
+            {selectedDocument && isImage(selectedDocument) ? (
+              <div className="relative w-full h-full">
+                <Image
+                  src={selectedDocument}
+                  alt="Document preview"
+                  fill
+                  className="object-contain p-4"
+                  sizes="(max-width: 1280px) 95vw, 1280px"
+                  priority
+                />
+              </div>
+            ) : (
+              <iframe
+                src={selectedDocument || ""}
+                className="w-full h-full bg-white"
+                title="Document preview"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

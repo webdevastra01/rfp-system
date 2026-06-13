@@ -123,7 +123,7 @@ export default function Authentication() {
 
      // if (rememberMe) {
         localStorage.setItem("userCache", JSON.stringify(cacheData));
-        console.log("User data cached in localStorage", cacheData);
+        //console.log("User data cached in localStorage", cacheData);
       // } else {
       //   sessionStorage.setItem("userCache", JSON.stringify(cacheData));
       // }
