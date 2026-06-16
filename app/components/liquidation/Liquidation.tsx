@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,7 @@ import {
   Receipt,
   Check,
   X,
+  Printer,
 } from "lucide-react";
 import { DataTableCard, Column } from "@/app/components/cards/DataTableCard";
 import {
@@ -48,6 +49,8 @@ import {
 } from "@/lib/interfaces";
 import { usePermissions } from "@/hooks/usePermissions";
 import { toast } from "sonner";
+import { useReactToPrint } from "react-to-print";
+import { PrintLiquidation } from "./PrintLiquidation";
 
 export default function Liquidation({
   rfps,
@@ -74,6 +77,23 @@ export default function Liquidation({
 
   const { hasAction } = usePermissions();
   const pathname = usePathname();
+
+  const printContentRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = useReactToPrint({
+    contentRef: printContentRef,
+    documentTitle: selectedLiquidation
+      ? `Liquidation_${selectedLiquidation.liquidation_number}`
+      : "Liquidation_Details",
+    pageStyle: `
+      @media print {
+        @page { size: A4; margin: 15mm; }
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .print-only { display: block !important; }
+        .no-print { display: none !important; }
+      }
+    `,
+  });
 
   let currentModule: "employee" | "finance" | null = null;
   if (pathname.startsWith("/home/employee-portal/requests")) {
@@ -206,7 +226,8 @@ export default function Liquidation({
       } catch (error) {
         console.error("Failed to approve liquidation:", error);
         toast.error("Failed to approve liquidation", {
-          description: "An error occurred while approving the liquidation. Please try again.",
+          description:
+            "An error occurred while approving the liquidation. Please try again.",
         });
       } finally {
         setIsApproving(false);
@@ -227,7 +248,8 @@ export default function Liquidation({
       } catch (error) {
         console.error("Failed to reject liquidation:", error);
         toast.error("Failed to reject liquidation", {
-          description: "An error occurred while rejecting the liquidation. Please try again.",
+          description:
+            "An error occurred while rejecting the liquidation. Please try again.",
         });
       } finally {
         setIsRejecting(false);
@@ -395,7 +417,7 @@ export default function Liquidation({
   ];
 
   const handleCreateLiquidation = (rfp: RequestForPaymentInterface) => {
-    console.log("Creating liquidation from RFP:", rfp.id);
+    //console.log("Creating liquidation from RFP:", rfp.id);
     setApprovedRFPDialogOpen(false);
     router.push(`/home/${module}/liquidation/liquidate/${rfp.id}`);
   };
@@ -517,6 +539,12 @@ export default function Liquidation({
               {selectedLiquidation?.liquidation_number}
             </DialogDescription>
           </DialogHeader>
+
+          <div ref={printContentRef} className="print-only">
+            {selectedLiquidation && (
+              <PrintLiquidation liquidation={selectedLiquidation} />
+            )}
+          </div>
 
           {selectedLiquidation && (
             <div className="space-y-6 py-4">
@@ -754,6 +782,15 @@ export default function Liquidation({
             >
               Close
             </Button>
+
+            <Button
+              variant="outline"
+              onClick={handlePrint}
+              className="border-slate-200 text-slate-700 hover:bg-slate-50"
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              Print / PDF
+            </Button>
             {/* Approve/Reject buttons in View Dialog footer */}
             {canApproveReject &&
               selectedLiquidation &&
@@ -977,6 +1014,23 @@ export default function Liquidation({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Print Styles */}
+      <style jsx global>{`
+        @media print {
+          .no-print {
+            display: none !important;
+          }
+          .print-only {
+            display: block !important;
+          }
+        }
+        @media screen {
+          .print-only {
+            display: none;
+          }
+        }
+      `}</style>
     </div>
   );
 }
