@@ -512,7 +512,7 @@ export default function CreateServiceRequestForm({
     const storedUser = localStorage.getItem("userCache");
     const user = storedUser ? JSON.parse(storedUser) : null;
 
-    console.log("Creating service request with user:", user);
+    //console.log("Creating service request with user:", user);
 
     if (!user?.profile.user_id) {
       toast.error("Authentication required", {
@@ -560,7 +560,7 @@ export default function CreateServiceRequestForm({
         supporting_documents: fileIds,
       };
 
-      console.log("Final payload for service request:", payload);
+      //console.log("Final payload for service request:", payload);
 
       // 3️⃣ Insert service request
       toast.loading("Finalizing your request...", { id: toastId });

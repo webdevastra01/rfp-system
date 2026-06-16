@@ -589,7 +589,7 @@ export default function RequestForPayment({
             )}
 
             {/* ✅ Cancel Button: Shows if status is NOT liquidated and NOT already cancelled */}
-            {row.status !== "liquidated" && row.status !== "cancelled" && (
+            {row.status !== "liquidated" && row.status !== "cancelled" && row.status !== "for approval" && (
               <Button
                 variant="outline"
                 size="sm"
