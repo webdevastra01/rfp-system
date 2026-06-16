@@ -14,7 +14,8 @@ async function getApprovedRequests(supabase: any): Promise<Request[]> {
   }
 
   const orderedRequestIds =
-    existingOrders?.map((o: any) => o.service_request_id) ?? [];
+    existingOrders?.map((o: any) => o.purchase_request_id).filter(Boolean) ??
+    [];
 
   // 2️⃣ Build query for approved requests
   let query = supabase
@@ -168,13 +169,13 @@ async function getOrders(supabase: any): Promise<Order[]> {
       company: r?.company?.name || "",
       department: r?.department?.name || "",
 
-      preferred_date: r?.preferred_date || "",
-      expected_completion: r?.expected_completion || "",
+      preferred_date: r?.preferred_date || null,
+      expected_completion: r?.expected_completion || null,
 
       preferred_vendor: r?.preferred_vendor || "",
       contact_person: r?.contact_person || "",
 
-      required_by: r?.required_by || "",
+      required_by: r?.required_by || null,
 
       payment_method: r?.payment_method?.name || "",
 
