@@ -30,7 +30,8 @@ import {
   Check,
   X,
   Wallet,
-  Ban, // Added for liquidated status
+  Ban,
+  ImageIcon, // Added for liquidated status
 } from "lucide-react";
 import { DataTableCard, Column } from "@/app/components/cards/DataTableCard";
 import {
@@ -51,6 +52,7 @@ import {
 import { usePermissions } from "@/hooks/usePermissions";
 import { toast } from "sonner";
 import { exportRFPExcel } from "@/lib/csv/generateRFPCSV";
+import FileGallery from "../FileGallery";
 
 export default function RequestForPayment({
   rfps,
@@ -834,6 +836,24 @@ export default function RequestForPayment({
                     </div>
                   </div>
                 )}
+
+                {/* Supporting Documents / Gallery */}
+                {selectedRfp.supporting_documents &&
+                  selectedRfp.supporting_documents.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <ImageIcon className="h-3.5 w-3.5" />
+                        Supporting Documents
+                      </h4>
+
+                      <FileGallery
+                        documents={selectedRfp.supporting_documents}
+                        orderNumber={
+                          selectedRfp.rfp_number || selectedRfp.order_number
+                        }
+                      />
+                    </div>
+                  )}
 
                 {/* Approval Info */}
                 {selectedRfp.approved_by && (
