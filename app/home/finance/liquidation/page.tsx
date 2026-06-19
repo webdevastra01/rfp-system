@@ -18,7 +18,8 @@ async function getApprovedRFPs(supabase: any) {
 }
 
 async function getLiquidatedRFPs(supabase: any) {
-  const { data, error } = await supabase
+  // Fetch liquidations
+  const { data: liquidations, error } = await supabase
     .from("liquidations")
     .select("*")
     .order("liquidation_number", { ascending: true });
@@ -28,7 +29,37 @@ async function getLiquidatedRFPs(supabase: any) {
     return [];
   }
 
-  return data || [];
+  if (!liquidations?.length) return [];
+
+  // Get unique rfp_ids
+  const rfpIds = [
+    ...new Set(liquidations.map((l: any) => l.rfp_id).filter(Boolean)),
+  ];
+
+  if (rfpIds.length === 0) {
+    return liquidations.map((l: any) => ({ ...l, supporting_documents: [] }));
+  }
+
+  // Fetch supporting documents from rfp table
+  const { data: rfps, error: rfpError } = await supabase
+    .from("requests_for_payment")
+    .select("id, supporting_documents")
+    .in("id", rfpIds);
+
+  if (rfpError) {
+    console.error("Error fetching RFPs for documents:", rfpError);
+  }
+
+  // Create lookup map
+  const rfpMap = new Map(
+    (rfps || []).map((r: any) => [r.id, r.supporting_documents || []]),
+  );
+
+  // Merge supporting_documents into each liquidation
+  return liquidations.map((liquidation: any) => ({
+    ...liquidation,
+    supporting_documents: rfpMap.get(liquidation.rfp_id) || [],
+  }));
 }
 
 async function approveLiquidation(id: string) {
