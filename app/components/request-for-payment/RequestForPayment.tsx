@@ -375,11 +375,19 @@ export default function RequestForPayment({
       header: "Description",
       width: "min-w-[200px]",
       render: (row) => (
-        <div className="flex flex-col">
-          <span className="font-semibold text-slate-900 text-sm line-clamp-1">
+        <div className="flex flex-col max-w-xs">
+          {" "}
+          {/* Adjust max-w as needed */}
+          <span
+            className="font-semibold text-slate-900 text-sm 
+                 line-clamp-2 break-words" // ← Changed to 2 lines
+            title={row.description} // ← Full text on hover (tooltip)
+          >
             {row.description}
           </span>
-          <span className="text-xs text-slate-500">{row.department}</span>
+          <span className="text-xs text-slate-500 mt-0.5">
+            {row.department}
+          </span>
         </div>
       ),
     },
@@ -589,17 +597,19 @@ export default function RequestForPayment({
             )}
 
             {/* ✅ Cancel Button: Shows if status is NOT liquidated and NOT already cancelled */}
-            {row.status !== "liquidated" && row.status !== "cancelled" && row.status !== "for approval" && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleActionClick(row, "cancelled")}
-                className="h-8 px-3 text-xs font-medium border-red-200 text-red-400 hover:bg-red-50 hover:text-red-600 hover:border-red-600 transition-all"
-              >
-                <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                Cancel
-              </Button>
-            )}
+            {row.status !== "liquidated" &&
+              row.status !== "cancelled" &&
+              row.status !== "for approval" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleActionClick(row, "cancelled")}
+                  className="h-8 px-3 text-xs font-medium border-red-200 text-red-400 hover:bg-red-50 hover:text-red-600 hover:border-red-600 transition-all"
+                >
+                  <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                  Cancel
+                </Button>
+              )}
           </div>
         )}
       />

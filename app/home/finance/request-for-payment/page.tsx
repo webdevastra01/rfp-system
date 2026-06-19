@@ -2,6 +2,7 @@ import RequestForPayment from "@/app/components/request-for-payment/RequestForPa
 import { Order } from "@/lib/interfaces";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { stringify } from "querystring";
 
 async function getServiceOrders(supabase: any): Promise<Order[]> {
   const { data, error } = await supabase
@@ -361,9 +362,12 @@ async function cancelRFP(id: string) {
 
 export async function getRFPsWithOrderDetails(supabase: any) {
   // 1. Fetch RFPs
-  const { data: rfps, error: rfpError } = await supabase
-    .from("requests_for_payment")
-    .select("*");
+  const { data: rfps, error: rfpError } = await supabase.from(
+    "requests_for_payment",
+  ).select(`
+      *,
+      created_at 
+    `);
 
   if (rfpError) throw rfpError;
   if (!rfps?.length) return [];
@@ -424,7 +428,7 @@ export async function getRFPsWithOrderDetails(supabase: any) {
   );
 
   // 5. Merge everything together
-  return rfps.map((rfp: any) => {
+  const merged = rfps.map((rfp: any) => {
     const serviceOrder = serviceMap.get(rfp.order_number) as any;
     const purchaseOrder = purchaseMap.get(rfp.order_number) as any;
 
@@ -453,6 +457,20 @@ export async function getRFPsWithOrderDetails(supabase: any) {
       vehicle: null,
     };
   });
+
+  // === SORTING IN SERIES (by created_at) ===
+  merged.sort((a: any, b: any) => {
+    const parseRFP = (num: string) => {
+      const match = num.match(/(\d{8})-(\d+)/);
+      if (match) {
+        return parseInt(match[1]) * 10000 + parseInt(match[2]);
+      }
+      return 0;
+    };
+    return parseRFP(a.rfp_number) - parseRFP(b.rfp_number);
+  });
+
+  return merged;
 }
 
 export default async function RequestForPaymentPage() {
