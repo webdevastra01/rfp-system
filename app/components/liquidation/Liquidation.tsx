@@ -51,6 +51,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { toast } from "sonner";
 import { useReactToPrint } from "react-to-print";
 import { PrintLiquidation } from "./PrintLiquidation";
+import FileGallery from "../FileGallery";
 
 export default function Liquidation({
   rfps,
@@ -729,6 +730,24 @@ export default function Liquidation({
                   </Table>
                 </div>
               </div>
+
+              {/* Supporting Documents - Using your FileGallery */}
+              {selectedLiquidation && (
+                <>
+                  {(() => {
+                    const docs = selectedLiquidation.supporting_documents ?? [];
+                    return docs.length > 0 ? (
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-[#2B3A9F]" />
+                          Supporting Documents
+                        </h4>
+                        <FileGallery documents={docs} />
+                      </div>
+                    ) : null;
+                  })()}
+                </>
+              )}
 
               {/* Approval Info - shown if approved/rejected */}
               {selectedLiquidation.approved_by && (

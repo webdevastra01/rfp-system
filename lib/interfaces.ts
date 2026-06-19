@@ -716,6 +716,7 @@ export type LiquidationInterface = {
   status: string;
   approved_date: string | null;
   approved_by: string | null;
+  supporting_documents?: string[];
 };
 
 export interface CreateUserPayload {
