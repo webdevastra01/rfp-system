@@ -48,6 +48,8 @@ import {
   TrendingDown,
   Receipt,
   ExternalLink,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
 import Link from "next/link";
 import { Label } from "@/components/ui/label";
@@ -70,6 +72,19 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 // Helper to calculate total from items
 const calculateTotal = (items: Item[]): number => {
@@ -167,6 +182,7 @@ export default function RequestDetailsPage({
   const [accountTitle, setAccountTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [entryType, setEntryType] = useState<"debit" | "credit">("debit");
+  const [open, setOpen] = useState(false);
 
   // react-to-print setup
   const contentRef = useRef<HTMLDivElement>(null);
@@ -754,83 +770,74 @@ export default function RequestDetailsPage({
 
             <CardContent className="space-y-6 p-6">
               {/* Input Form */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-5 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0]">
-                <div className="space-y-2.5">
-                  <Label className="text-sm font-bold text-[#475569] flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-[#2B3A9F]" />
-                    Account Title
-                  </Label>
-                  <Select value={accountTitle} onValueChange={setAccountTitle}>
-                    <SelectTrigger className="w-full bg-white border-[#E2E8F0] focus:ring-[#2B3A9F] focus:border-[#2B3A9F] h-11">
-                      <SelectValue placeholder="Select account..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map((account) => (
-                        <SelectItem
-                          key={account.account_id}
-                          value={account.name}
-                        >
-                          <span className="text-[#64748B]">
-                            {account.account_type}
-                          </span>
-                          <span className="mx-2 text-[#CBD5E1]">•</span>
-                          <span className="font-medium text-[#1E293B]">
-                            {account.name}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2.5">
+                <Label className="text-sm font-bold text-[#475569] flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-[#2B3A9F]" />
+                  Account Title
+                </Label>
 
-                <div className="space-y-2.5">
-                  <Label className="text-sm font-bold text-[#475569] flex items-center gap-2">
-                    <Coins className="h-4 w-4 text-[#2B3A9F]" />
-                    Amount
-                  </Label>
-                  <Input
-                    type="number"
-                    placeholder="0.00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="bg-white border-[#E2E8F0] focus:ring-[#2B3A9F] focus:border-[#2B3A9F] h-11 font-mono text-[#1E293B]"
-                  />
-                </div>
+                <Popover open={open} onOpenChange={setOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={open}
+                      className="w-full bg-white border-[#E2E8F0] focus:ring-[#2B3A9F] focus:border-[#2B3A9F] h-11 justify-between font-normal"
+                    >
+                      {accountTitle ? (
+                        <span className="truncate">
+                          {accounts.find((a) => a.name === accountTitle)?.name}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          Select account...
+                        </span>
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
 
-                <div className="space-y-2.5">
-                  <Label className="text-sm font-bold text-[#475569] flex items-center gap-2">
-                    <ArrowLeftRight className="h-4 w-4 text-[#2B3A9F]" />
-                    Entry Type
-                  </Label>
-                  <Select
-                    value={entryType}
-                    onValueChange={(value: "debit" | "credit") =>
-                      setEntryType(value)
-                    }
-                  >
-                    <SelectTrigger className="w-full bg-white border-[#E2E8F0] focus:ring-[#2B3A9F] focus:border-[#2B3A9F] h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="debit">
-                        <div className="flex items-center gap-2">
-                          <div className="h-2.5 w-2.5 rounded-full bg-[#10B981]" />
-                          <span className="font-medium text-[#059669]">
-                            Debit
-                          </span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="credit">
-                        <div className="flex items-center gap-2">
-                          <div className="h-2.5 w-2.5 rounded-full bg-[#EF4444]" />
-                          <span className="font-medium text-[#DC2626]">
-                            Credit
-                          </span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search account..." />
+                      <CommandList>
+                        <CommandEmpty>No account found.</CommandEmpty>
+                        <CommandGroup>
+                          {accounts.map((account) => (
+                            <CommandItem
+                              key={account.account_id}
+                              value={account.name}
+                              onSelect={(currentValue) => {
+                                setAccountTitle(
+                                  currentValue === accountTitle
+                                    ? ""
+                                    : currentValue,
+                                );
+                                setOpen(false);
+                              }}
+                            >
+                              <Check
+                                className={`mr-2 h-4 w-4 ${
+                                  accountTitle === account.name
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                }`}
+                              />
+                              <div className="flex flex-col">
+                                <span className="font-medium text-[#1E293B]">
+                                  {account.name}
+                                </span>
+                                <span className="text-xs text-[#64748B]">
+                                  {account.account_type}
+                                </span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="flex justify-end">
