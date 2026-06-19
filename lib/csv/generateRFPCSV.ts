@@ -41,7 +41,12 @@ export async function exportRFPExcel(data: any[]) {
       requestor: rfp.requested_by ?? "",
       payableTo: rfp.payable_to ?? "",
       description: rfp.description ?? "",
-      requestedAmount: Number(rfp.total_payable),
+      requestedAmount: Number(
+        String(rfp.total_payable || rfp.total_amount || 0).replace(
+          /[^0-9.-]+/g,
+          "",
+        ),
+      ),
       paymentMethod: rfp.payment_method ?? "",
       orderNumber: rfp.order_number,
       orderType: rfp.order_type,
@@ -71,7 +76,7 @@ export async function exportRFPExcel(data: any[]) {
   });
 
   // Currency format
-  worksheet.getColumn("requestedAmount").numFmt = "₱#,##0.00;[Red]-₱#,##0.00";
+  worksheet.getColumn("requestedAmount").numFmt = "#,##0.00;[Red]-#,##0.00";
 
   // Auto filter
   worksheet.autoFilter = {
