@@ -31,7 +31,8 @@ import {
   X,
   Wallet,
   Ban,
-  ImageIcon, // Added for liquidated status
+  ImageIcon,
+  Truck, // Added for liquidated status
 } from "lucide-react";
 import { DataTableCard, Column } from "@/app/components/cards/DataTableCard";
 import {
@@ -761,6 +762,43 @@ export default function RequestForPayment({
                     </div>
                   </div>
                 </div>
+
+                {/* Vehicle Information - NEW */}
+                {selectedRfp?.vehicle && (
+                  <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0]">
+                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <Truck className="h-3.5 w-3.5" /> {/* or Car icon */}
+                      Vehicle Information
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] text-slate-500 uppercase font-semibold block mb-1">
+                          Vehicle Type
+                        </label>
+                        <p className="text-sm font-medium text-slate-900">
+                          {selectedRfp.vehicle.car_type}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 uppercase font-semibold block mb-1">
+                          Plate Number
+                        </label>
+                        <p className="text-sm font-medium text-slate-900 font-mono">
+                          {selectedRfp.vehicle.plate_number}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 uppercase font-semibold block mb-1">
+                          Owner
+                        </label>
+                        <p className="text-sm text-slate-900">
+                          {selectedRfp.vehicle.owners_first_name}{" "}
+                          {selectedRfp.vehicle.owners_last_name}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Line Items */}
                 {selectedRfp.line_items?.length > 0 && (

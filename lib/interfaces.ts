@@ -669,6 +669,13 @@ export interface RequestForPaymentInterface {
 
   line_items: RFPLineItem[];
   supporting_documents?: string[];
+
+  vehicle?: {
+    car_type: string;
+    plate_number: string;
+    owners_first_name: string;
+    owners_last_name: string;
+  } | null;
 }
 
 export interface LiquidationPageProps {
