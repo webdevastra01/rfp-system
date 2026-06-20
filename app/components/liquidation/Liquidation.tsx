@@ -29,6 +29,7 @@ import {
   Check,
   X,
   Printer,
+  Car,
 } from "lucide-react";
 import { DataTableCard, Column } from "@/app/components/cards/DataTableCard";
 import {
@@ -634,6 +635,46 @@ export default function Liquidation({
                   </div>
                 </div>
               </div>
+
+              {/* Vehicle Information */}
+              {selectedLiquidation.vehicle && (
+                <div className="border rounded-lg p-4 bg-slate-50/50">
+                  <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                    <Car className="h-4 w-4 text-[#2B3A9F]" />
+                    Vehicle Information
+                  </h4>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                        Plate Number
+                      </p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {selectedLiquidation.vehicle.plate_number}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                        Vehicle
+                      </p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {selectedLiquidation.vehicle.car_type}
+                      </p>
+                    </div>
+
+                    <div className="col-span-2">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                        Owner
+                      </p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {selectedLiquidation.vehicle.owners_first_name}{" "}
+                        {selectedLiquidation.vehicle.owners_last_name}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Financial Summary */}
               <div className="border rounded-lg p-4 bg-slate-50/50">

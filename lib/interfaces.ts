@@ -724,6 +724,12 @@ export type LiquidationInterface = {
   approved_date: string | null;
   approved_by: string | null;
   supporting_documents?: string[];
+  vehicle?: {
+  plate_number: string;
+  car_type: string;
+  owners_first_name: string;
+  owners_last_name: string;
+} | null;
 };
 
 export interface CreateUserPayload {
