@@ -86,7 +86,8 @@ async function getLiquidatedRFPs(supabase: any) {
     if (!orderNumbers.length) {
       return liquidations.map((l: any) => ({
         ...l,
-        supporting_documents: rfpMap.get(l.rfp_id)?.supporting_documents ?? [],
+        supporting_documents:
+          (rfpMap.get(l.rfp_id) as any)?.supporting_documents ?? [],
         order_type: null,
         description: null,
         vehicle: null,
