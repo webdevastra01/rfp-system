@@ -431,8 +431,8 @@ export async function getRFPsWithOrderDetails(supabase: any) {
 
   // 5. Merge everything
   const merged = rfps.map((rfp: any) => {
-    const serviceOrder = serviceMap.get(rfp.order_number);
-    const purchaseOrder = purchaseMap.get(rfp.order_number);
+    const serviceOrder = serviceMap.get(rfp.order_number) as any;
+    const purchaseOrder = purchaseMap.get(rfp.order_number) as any;
 
     const base = {
       ...rfp,
