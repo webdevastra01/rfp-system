@@ -18,48 +18,203 @@ async function getApprovedRFPs(supabase: any) {
 }
 
 async function getLiquidatedRFPs(supabase: any) {
-  // Fetch liquidations
-  const { data: liquidations, error } = await supabase
-    .from("liquidations")
-    .select("*")
-    .order("liquidation_number", { ascending: true });
+  try {
+    // =========================
+    // Helpers (safe + reusable)
+    // =========================
+    const normalizeJSON = (value: any) => {
+      if (!value) return [];
+      if (Array.isArray(value)) return value;
+      if (typeof value === "string") {
+        try {
+          return JSON.parse(value);
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    };
 
-  if (error) {
+    // =========================
+    // 1. Fetch liquidations
+    // =========================
+    const { data: liquidations, error: liquidationError } = await supabase
+      .from("liquidations")
+      .select("*")
+      .order("liquidation_number", { ascending: true });
+
+    if (liquidationError) throw liquidationError;
+    if (!liquidations?.length) return [];
+
+    // =========================
+    // 2. Extract RFP IDs
+    // =========================
+    const rfpIds = [
+      ...new Set(liquidations.map((l: any) => l.rfp_id).filter(Boolean)),
+    ];
+
+    if (!rfpIds.length) return liquidations;
+
+    // =========================
+    // 3. Fetch RFPs
+    // =========================
+    const { data: rfps, error: rfpError } = await supabase
+      .from("requests_for_payment")
+      .select("id, order_number, supporting_documents");
+
+    if (rfpError) throw rfpError;
+    if (!rfps?.length) {
+      return liquidations.map((l: any) => ({
+        ...l,
+        supporting_documents: [],
+        order_type: null,
+        description: null,
+        vehicle: null,
+        journal_entries: [],
+      }));
+    }
+
+    const rfpMap = new Map(rfps.map((r: any) => [r.id, r]));
+
+    // =========================
+    // 4. Extract order numbers
+    // =========================
+    const orderNumbers = [
+      ...new Set(rfps.map((r: any) => r.order_number).filter(Boolean)),
+    ];
+
+    if (!orderNumbers.length) {
+      return liquidations.map((l: any) => ({
+        ...l,
+        supporting_documents:
+          (rfpMap.get(l.rfp_id) as any)?.supporting_documents ?? [],
+        order_type: null,
+        description: null,
+        vehicle: null,
+        journal_entries: [],
+      }));
+    }
+
+    // =========================
+    // 5. Fetch SO + PO in parallel
+    // =========================
+    const [
+      { data: serviceOrders, error: serviceError },
+      { data: purchaseOrders, error: purchaseError },
+    ] = await Promise.all([
+      supabase
+        .from("service_orders")
+        .select(
+          `
+          order_number,
+          journal_entries,
+          service_request:service_request_id (
+            id,
+            description,
+            vehicle:vehicles (
+              plate_number,
+              car_type,
+              owners_first_name,
+              owners_last_name
+            )
+          )
+        `,
+        )
+        .in("order_number", orderNumbers),
+
+      supabase
+        .from("purchase_orders")
+        .select(
+          `
+          order_number,
+          journal_entries,
+          purchase_request:purchase_request_id (
+            id,
+            description,
+            vehicle:vehicles (
+              plate_number,
+              car_type,
+              owners_first_name,
+              owners_last_name
+            )
+          )
+        `,
+        )
+        .in("order_number", orderNumbers),
+    ]);
+
+    if (serviceError) throw serviceError;
+    if (purchaseError) throw purchaseError;
+
+    // =========================
+    // 6. Build lookup maps
+    // =========================
+    const serviceMap = new Map(
+      (serviceOrders ?? []).map((o: any) => [o.order_number, o]),
+    );
+
+    const purchaseMap = new Map(
+      (purchaseOrders ?? []).map((o: any) => [o.order_number, o]),
+    );
+
+    // =========================
+    // 7. Enrich RFPs
+    // =========================
+    const rfpLookup = new Map<number, any>();
+
+    for (const rfp of rfps) {
+      const serviceOrder = serviceMap.get(rfp.order_number) as any;
+      const purchaseOrder = purchaseMap.get(rfp.order_number) as any;
+
+      const soEntries = normalizeJSON(serviceOrder?.journal_entries);
+      const poEntries = normalizeJSON(purchaseOrder?.journal_entries);
+
+      const enriched = {
+        supporting_documents: rfp.supporting_documents ?? [],
+
+        order_type: serviceOrder
+          ? "service_order"
+          : purchaseOrder
+            ? "purchase_order"
+            : null,
+
+        description:
+          serviceOrder?.service_request?.description ??
+          purchaseOrder?.purchase_request?.description ??
+          null,
+
+        vehicle:
+          serviceOrder?.service_request?.vehicle ??
+          purchaseOrder?.purchase_request?.vehicle ??
+          null,
+
+        // ✅ SAFE MERGE (SO + PO)
+        journal_entries: [...soEntries, ...poEntries],
+      };
+
+      rfpLookup.set(rfp.id, enriched);
+    }
+
+    // =========================
+    // 8. Merge into liquidations
+    // =========================
+    return liquidations.map((liquidation: any) => {
+      const enriched = rfpLookup.get(liquidation.rfp_id);
+
+      return {
+        ...liquidation,
+        supporting_documents: enriched?.supporting_documents ?? [],
+
+        order_type: enriched?.order_type ?? null,
+        description: enriched?.description ?? null,
+        vehicle: enriched?.vehicle ?? null,
+        journal_entries: enriched?.journal_entries ?? [],
+      };
+    });
+  } catch (error) {
     console.error("Error fetching liquidated RFPs:", error);
     return [];
   }
-
-  if (!liquidations?.length) return [];
-
-  // Get unique rfp_ids
-  const rfpIds = [
-    ...new Set(liquidations.map((l: any) => l.rfp_id).filter(Boolean)),
-  ];
-
-  if (rfpIds.length === 0) {
-    return liquidations.map((l: any) => ({ ...l, supporting_documents: [] }));
-  }
-
-  // Fetch supporting documents from rfp table
-  const { data: rfps, error: rfpError } = await supabase
-    .from("requests_for_payment")
-    .select("id, supporting_documents")
-    .in("id", rfpIds);
-
-  if (rfpError) {
-    console.error("Error fetching RFPs for documents:", rfpError);
-  }
-
-  // Create lookup map
-  const rfpMap = new Map(
-    (rfps || []).map((r: any) => [r.id, r.supporting_documents || []]),
-  );
-
-  // Merge supporting_documents into each liquidation
-  return liquidations.map((liquidation: any) => ({
-    ...liquidation,
-    supporting_documents: rfpMap.get(liquidation.rfp_id) || [],
-  }));
 }
 
 async function approveLiquidation(id: string) {

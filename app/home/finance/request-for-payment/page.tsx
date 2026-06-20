@@ -366,15 +366,15 @@ export async function getRFPsWithOrderDetails(supabase: any) {
     "requests_for_payment",
   ).select(`
       *,
-      created_at 
+      created_at
     `);
 
   if (rfpError) throw rfpError;
   if (!rfps?.length) return [];
 
-  const orderNumbers = rfps.map((r: any) => r.order_number);
+  const orderNumbers = rfps.map((r: any) => r.order_number).filter(Boolean);
 
-  // 2. Fetch matching Service Orders
+  // 2. Fetch Service Orders
   const { data: serviceOrders, error: serviceError } = await supabase
     .from("service_orders")
     .select(
@@ -389,14 +389,15 @@ export async function getRFPsWithOrderDetails(supabase: any) {
           owners_first_name,
           owners_last_name
         )
-      )
+      ),
+      journal_entries
     `,
     )
     .in("order_number", orderNumbers);
 
   if (serviceError) throw serviceError;
 
-  // 3. Fetch matching Purchase Orders
+  // 3. Fetch Purchase Orders
   const { data: purchaseOrders, error: purchaseError } = await supabase
     .from("purchase_orders")
     .select(
@@ -411,7 +412,8 @@ export async function getRFPsWithOrderDetails(supabase: any) {
           owners_first_name,
           owners_last_name
         )
-      )
+      ),
+      journal_entries
     `,
     )
     .in("order_number", orderNumbers);
@@ -420,53 +422,59 @@ export async function getRFPsWithOrderDetails(supabase: any) {
 
   // 4. Create lookup maps
   const serviceMap = new Map(
-    (serviceOrders ?? []).map((order: any) => [order.order_number, order]),
+    (serviceOrders ?? []).map((o: any) => [o.order_number, o]),
   );
 
   const purchaseMap = new Map(
-    (purchaseOrders ?? []).map((order: any) => [order.order_number, order]),
+    (purchaseOrders ?? []).map((o: any) => [o.order_number, o]),
   );
 
-  // 5. Merge everything together
+  // 5. Merge everything
   const merged = rfps.map((rfp: any) => {
     const serviceOrder = serviceMap.get(rfp.order_number) as any;
     const purchaseOrder = purchaseMap.get(rfp.order_number) as any;
 
+    const base = {
+      ...rfp,
+      order_type: null,
+      description: null,
+      vehicle: null,
+      journal_entries: [],
+    };
+
     if (serviceOrder) {
       return {
-        ...rfp,
+        ...base,
         order_type: "service",
         description: serviceOrder.service_request?.description ?? null,
         vehicle: serviceOrder.service_request?.vehicle ?? null,
+        journal_entries: serviceOrder.journal_entries ?? [],
       };
     }
 
     if (purchaseOrder) {
       return {
-        ...rfp,
+        ...base,
         order_type: "purchase",
         description: purchaseOrder.purchase_request?.description ?? null,
         vehicle: purchaseOrder.purchase_request?.vehicle ?? null,
+        journal_entries: purchaseOrder.journal_entries ?? [],
       };
     }
 
-    return {
-      ...rfp,
-      order_type: null,
-      description: null,
-      vehicle: null,
-    };
+    return base;
   });
 
-  // === SORTING IN SERIES (by created_at) ===
+  // 6. Sorting (unchanged logic)
   merged.sort((a: any, b: any) => {
     const parseRFP = (num: string) => {
-      const match = num.match(/(\d{8})-(\d+)/);
+      const match = num?.match(/(\d{8})-(\d+)/);
       if (match) {
         return parseInt(match[1]) * 10000 + parseInt(match[2]);
       }
       return 0;
     };
+
     return parseRFP(a.rfp_number) - parseRFP(b.rfp_number);
   });
 

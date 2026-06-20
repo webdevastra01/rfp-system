@@ -29,6 +29,7 @@ import {
   Check,
   X,
   Printer,
+  Car,
 } from "lucide-react";
 import { DataTableCard, Column } from "@/app/components/cards/DataTableCard";
 import {
@@ -423,6 +424,22 @@ export default function Liquidation({
     router.push(`/home/${module}/liquidation/liquidate/${rfp.id}`);
   };
 
+  const parseJournalEntries = (data: any) => {
+    if (!data) return [];
+
+    if (Array.isArray(data)) return data;
+
+    if (typeof data === "string") {
+      try {
+        return JSON.parse(data);
+      } catch {
+        return [];
+      }
+    }
+
+    return [];
+  };
+
   return (
     <div className="min-h-screen p-6 md:p-8 bg-slate-50/50">
       {/* Header Section */}
@@ -635,6 +652,46 @@ export default function Liquidation({
                 </div>
               </div>
 
+              {/* Vehicle Information */}
+              {selectedLiquidation.vehicle && (
+                <div className="border rounded-lg p-4 bg-slate-50/50">
+                  <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                    <Car className="h-4 w-4 text-[#2B3A9F]" />
+                    Vehicle Information
+                  </h4>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                        Plate Number
+                      </p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {selectedLiquidation.vehicle.plate_number}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                        Vehicle
+                      </p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {selectedLiquidation.vehicle.car_type}
+                      </p>
+                    </div>
+
+                    <div className="col-span-2">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                        Owner
+                      </p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {selectedLiquidation.vehicle.owners_first_name}{" "}
+                        {selectedLiquidation.vehicle.owners_last_name}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Financial Summary */}
               <div className="border rounded-lg p-4 bg-slate-50/50">
                 <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
@@ -677,6 +734,64 @@ export default function Liquidation({
                       {formatCurrency(selectedLiquidation.remaining_balance)}
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* Journal Entries */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-900 mb-3">
+                  Journal Entries (
+                  {
+                    parseJournalEntries(selectedLiquidation.journal_entries)
+                      .length
+                  }
+                  )
+                </h4>
+
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-slate-50">
+                      <TableRow>
+                        <TableHead className="text-xs font-medium text-slate-600">
+                          Account Title
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-slate-600">
+                          Type
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-slate-600 text-right">
+                          Amount
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+
+                    <TableBody>
+                      {parseJournalEntries(
+                        selectedLiquidation.journal_entries,
+                      ).map((entry: any, idx: number) => (
+                        <TableRow key={idx}>
+                          <TableCell className="text-sm text-slate-700">
+                            {entry.accountTitle}
+                          </TableCell>
+
+                          <TableCell className="text-sm capitalize">
+                            <span
+                              className={
+                                entry.entryType === "debit"
+                                  ? "text-emerald-600 font-medium"
+                                  : "text-rose-600 font-medium"
+                              }
+                            >
+                              {entry.entryType}
+                            </span>
+                          </TableCell>
+
+                          <TableCell className="text-sm font-mono font-semibold text-right">
+                            {formatCurrency(entry.amount)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
 

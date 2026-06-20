@@ -669,6 +669,14 @@ export interface RequestForPaymentInterface {
 
   line_items: RFPLineItem[];
   supporting_documents?: string[];
+
+  vehicle?: {
+    car_type: string;
+    plate_number: string;
+    owners_first_name: string;
+    owners_last_name: string;
+  } | null;
+  journal_entries?: JEnt[];
 }
 
 export interface LiquidationPageProps {
@@ -699,6 +707,12 @@ export type LiquidationEntry = {
   amount: number;
 };
 
+type JEnt = {
+  amount: number;
+  entryType: "debit" | "credit";
+  accountTitle: string;
+};
+
 export type LiquidationInterface = {
   id: string;
   created_at: string;
@@ -717,6 +731,17 @@ export type LiquidationInterface = {
   approved_date: string | null;
   approved_by: string | null;
   supporting_documents?: string[];
+  vehicle?: {
+    plate_number: string;
+    car_type: string;
+    owners_first_name: string;
+    owners_last_name: string;
+  } | null;
+  journal_entries: {
+    amount: number;
+    entryType: "debit" | "credit";
+    accountTitle: string;
+  };
 };
 
 export interface CreateUserPayload {
