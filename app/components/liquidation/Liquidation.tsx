@@ -424,6 +424,22 @@ export default function Liquidation({
     router.push(`/home/${module}/liquidation/liquidate/${rfp.id}`);
   };
 
+  const parseJournalEntries = (data: any) => {
+    if (!data) return [];
+
+    if (Array.isArray(data)) return data;
+
+    if (typeof data === "string") {
+      try {
+        return JSON.parse(data);
+      } catch {
+        return [];
+      }
+    }
+
+    return [];
+  };
+
   return (
     <div className="min-h-screen p-6 md:p-8 bg-slate-50/50">
       {/* Header Section */}
@@ -718,6 +734,64 @@ export default function Liquidation({
                       {formatCurrency(selectedLiquidation.remaining_balance)}
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* Journal Entries */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-900 mb-3">
+                  Journal Entries (
+                  {
+                    parseJournalEntries(selectedLiquidation.journal_entries)
+                      .length
+                  }
+                  )
+                </h4>
+
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-slate-50">
+                      <TableRow>
+                        <TableHead className="text-xs font-medium text-slate-600">
+                          Account Title
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-slate-600">
+                          Type
+                        </TableHead>
+                        <TableHead className="text-xs font-medium text-slate-600 text-right">
+                          Amount
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+
+                    <TableBody>
+                      {parseJournalEntries(
+                        selectedLiquidation.journal_entries,
+                      ).map((entry: any, idx: number) => (
+                        <TableRow key={idx}>
+                          <TableCell className="text-sm text-slate-700">
+                            {entry.accountTitle}
+                          </TableCell>
+
+                          <TableCell className="text-sm capitalize">
+                            <span
+                              className={
+                                entry.entryType === "debit"
+                                  ? "text-emerald-600 font-medium"
+                                  : "text-rose-600 font-medium"
+                              }
+                            >
+                              {entry.entryType}
+                            </span>
+                          </TableCell>
+
+                          <TableCell className="text-sm font-mono font-semibold text-right">
+                            {formatCurrency(entry.amount)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
 

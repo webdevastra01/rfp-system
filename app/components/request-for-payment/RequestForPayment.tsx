@@ -763,6 +763,39 @@ export default function RequestForPayment({
                   </div>
                 </div>
 
+                {selectedRfp?.journal_entries?.length ? (
+                  <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0]">
+                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5" />
+                      Journal Entries
+                    </h4>
+
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Account</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+
+                      <TableBody>
+                        {selectedRfp.journal_entries.map((je, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell>{je.accountTitle}</TableCell>
+                            <TableCell className="capitalize">
+                              {je.entryType}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              {formatCurrency(je.amount)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : null}
+
                 {/* Vehicle Information - NEW */}
                 {selectedRfp?.vehicle && (
                   <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0]">
