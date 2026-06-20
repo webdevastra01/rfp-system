@@ -162,8 +162,8 @@ async function getLiquidatedRFPs(supabase: any) {
     const rfpLookup = new Map<number, any>();
 
     for (const rfp of rfps) {
-      const serviceOrder = serviceMap.get(rfp.order_number);
-      const purchaseOrder = purchaseMap.get(rfp.order_number);
+      const serviceOrder = serviceMap.get(rfp.order_number) as any;
+      const purchaseOrder = purchaseMap.get(rfp.order_number) as any;
 
       const soEntries = normalizeJSON(serviceOrder?.journal_entries);
       const poEntries = normalizeJSON(purchaseOrder?.journal_entries);
