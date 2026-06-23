@@ -49,7 +49,15 @@ import {
 } from "@/lib/interfaces";
 import { PrintServiceOrder } from "../service-orders/PrintServiceOrderPage";
 import { useReactToPrint } from "react-to-print";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 const calculateTotal = (items: Item[]): number => {
   return items.reduce((sum, item) => {
@@ -76,6 +84,7 @@ export default function ReviewOrder({ orders, units }: ReviewOrderProps) {
   const [actionType, setActionType] = useState<"approved" | "rejected" | null>(
     null,
   );
+  const [rejectionReason, setRejectionReason] = useState("");
   const supabase = createClient();
 
   // Ref for print content
@@ -96,13 +105,17 @@ export default function ReviewOrder({ orders, units }: ReviewOrderProps) {
     `,
   });
 
-  const getStatusBadge = (status: Order["status"]) => {
+  const getStatusBadge = (
+    status: Order["status"],
+    rejectionReason?: string,
+  ) => {
     const styles: Record<string, string> = {
       "for approval": "bg-amber-50 text-amber-700 border-amber-200",
       approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
       rejected: "bg-rose-50 text-rose-700 border-rose-200",
     };
-    return (
+
+    const badge = (
       <Badge
         className={cn(
           styles[status] || "bg-slate-50 text-slate-700 border-slate-200",
@@ -115,6 +128,22 @@ export default function ReviewOrder({ orders, units }: ReviewOrderProps) {
           : status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );
+
+    if (status === "rejected" && rejectionReason?.trim()) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>{badge}</TooltipTrigger>
+            <TooltipContent className="max-w-xs text-left">
+              <p className="font-medium">Rejection Reason:</p>
+              <p className="text-sm text-rose-100">{rejectionReason}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return badge;
   };
 
   const getPriorityBadge = (priority: string) => {
@@ -147,29 +176,48 @@ export default function ReviewOrder({ orders, units }: ReviewOrderProps) {
     setSelectedOrder(order);
     setActionType(action);
     setActionDialogOpen(true);
+    if (action === "rejected") setRejectionReason(""); // reset reason
   };
 
   const handleConfirmAction = async () => {
     if (!selectedOrder || !actionType) return;
 
-    await handleUpdateStatus(selectedOrder, actionType);
+    if (actionType === "rejected" && !rejectionReason.trim()) {
+      toast.error("Please provide a reason for rejection");
+      return;
+    }
+
+    await handleUpdateStatus(
+      selectedOrder,
+      actionType,
+      actionType === "rejected" ? rejectionReason.trim() : undefined,
+    );
 
     setActionDialogOpen(false);
+    setRejectionReason("");
     setSelectedOrder(null);
     setActionType(null);
   };
 
+  // Updated handleUpdateStatus
   async function handleUpdateStatus(
     order: Order,
     status: "approved" | "rejected",
+    rejectionReason?: string,
   ) {
     try {
       const isServiceOrder = order.order_number.startsWith("SO");
       const table = isServiceOrder ? "service_orders" : "purchase_orders";
 
+      const updatePayload: any = { status };
+
+      if (status === "rejected" && rejectionReason) {
+        updatePayload.rejection_reason = rejectionReason;
+      }
+
       const { error } = await supabase
         .from(table)
-        .update({ status })
+        .update(updatePayload)
         .eq("id", order.id);
 
       if (error) {
@@ -181,30 +229,33 @@ export default function ReviewOrder({ orders, units }: ReviewOrderProps) {
         return;
       }
 
-      // Determine order type label
       const orderType = isServiceOrder ? "Service Order" : "Purchase Order";
-      const actionLabel = status === "approved" ? "approved" : "rejected";
 
-      // Show success toast with dynamic message
       toast.success(
         status === "approved"
           ? `${orderType} approved successfully`
-          : `${orderType} rejected`,
+          : `${orderType} rejected successfully`,
         {
-          description: `${orderType} ${order.order_number} has been ${actionLabel}.`,
+          description: `${orderType} ${order.order_number} has been ${status}.`,
         },
       );
 
-      // Update UI
       setOrderList((prev) =>
-        prev.map((req) => (req.id === order.id ? { ...req, status } : req)),
+        prev.map((o) =>
+          o.id === order.id
+            ? {
+                ...o,
+                status,
+                ...(status === "rejected" && {
+                  rejection_reason: rejectionReason,
+                }),
+              }
+            : o,
+        ),
       );
     } catch (err) {
       console.error("Unexpected error:", err);
-      toast.error("Unexpected error occurred", {
-        description:
-          "Please try again or contact support if the problem persists.",
-      });
+      toast.error("Unexpected error occurred");
     }
   }
 
@@ -289,7 +340,7 @@ export default function ReviewOrder({ orders, units }: ReviewOrderProps) {
       key: "status",
       header: "Status",
       width: "w-[120px]",
-      render: (row) => getStatusBadge(row.status),
+      render: (row) => getStatusBadge(row.status, row.rejection_reason), // ← Updated
     },
     {
       key: "preferred_date",
@@ -453,7 +504,11 @@ export default function ReviewOrder({ orders, units }: ReviewOrderProps) {
                 </DialogDescription>
               </div>
               <div className="flex items-center gap-3">
-                {selectedOrder && getStatusBadge(selectedOrder.status)}
+                {selectedOrder &&
+                  getStatusBadge(
+                    selectedOrder.status,
+                    selectedOrder.rejection_reason,
+                  )}
 
                 {selectedOrder && (
                   <Button
@@ -854,23 +909,51 @@ export default function ReviewOrder({ orders, units }: ReviewOrderProps) {
               {actionType === "approved" ? "Approve Order" : "Reject Order"}
             </DialogTitle>
             <DialogDescription className="text-slate-500">
-              Are you sure you want to {actionType}{" "}
+              Are you sure you want to{" "}
+              {actionType === "approved" ? "approve" : "reject"}{" "}
               <span className="font-semibold text-slate-900">
                 {selectedOrder?.order_number}
               </span>
               ?
             </DialogDescription>
           </DialogHeader>
+
+          {/* Rejection Reason Input */}
+          {actionType === "rejected" && (
+            <div className="space-y-2 py-2">
+              <Label
+                htmlFor="rejectionReason"
+                className="text-sm text-slate-700"
+              >
+                Reason for Rejection <span className="text-rose-500">*</span>
+              </Label>
+              <Textarea
+                id="rejectionReason"
+                placeholder="Enter reason for rejecting this order..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="min-h-[100px] resize-y border-[#E2E8F0]"
+              />
+              <p className="text-xs text-slate-500">
+                This reason will be visible to the requester.
+              </p>
+            </div>
+          )}
+
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
-              onClick={() => setActionDialogOpen(false)}
+              onClick={() => {
+                setActionDialogOpen(false);
+                setRejectionReason("");
+              }}
               className="border-[#E2E8F0] text-slate-700"
             >
               Cancel
             </Button>
             <Button
               onClick={handleConfirmAction}
+              disabled={actionType === "rejected" && !rejectionReason.trim()}
               className={
                 actionType === "approved"
                   ? "bg-emerald-600 hover:bg-emerald-700 text-white"

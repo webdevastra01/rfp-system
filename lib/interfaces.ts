@@ -435,6 +435,7 @@ export interface Order {
   journal_entries?: JournalEntry[];
   approved_by?: string;
   approved_on?: string;
+  rejection_reason?: string;
 }
 
 export interface ReviewOrderProps {
