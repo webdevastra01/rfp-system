@@ -133,7 +133,7 @@ export default function ServiceOrder({
             <TooltipTrigger asChild>{badge}</TooltipTrigger>
             <TooltipContent className="max-w-xs text-left">
               <p className="font-medium">Rejection Reason:</p>
-              <p className="text-sm text-rose-100 mt-1">{rejectionReason}</p>
+              <p className="text-sm text-rose-100">{rejectionReason}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

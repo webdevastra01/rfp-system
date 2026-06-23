@@ -49,6 +49,12 @@ import {
 import { cn } from "@/lib/utils";
 import { useReactToPrint } from "react-to-print";
 import { PrintPurchaseOrder } from "./PrintPurchaseOrder";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function PurchaseOrder({
   requests,
@@ -99,16 +105,17 @@ export default function PurchaseOrder({
     }).format(amount);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, rejectionReason?: string) => {
     const config =
       colors.semantic[status as keyof typeof colors.semantic] ||
       colors.semantic.for_approval;
+
     const label =
       status === "for approval"
         ? "For Approval"
         : status.charAt(0).toUpperCase() + status.slice(1);
 
-    return (
+    const badge = (
       <Badge
         className={cn(
           config.bg,
@@ -122,6 +129,23 @@ export default function PurchaseOrder({
         {label}
       </Badge>
     );
+
+    // Show tooltip for rejected orders
+    if (status === "rejected" && rejectionReason?.trim()) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>{badge}</TooltipTrigger>
+            <TooltipContent className="max-w-xs text-left">
+              <p className="font-medium">Rejection Reason:</p>
+              <p className="text-sm text-rose-100">{rejectionReason}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return badge;
   };
 
   const getPriorityBadge = (priority: string) => {
@@ -242,7 +266,7 @@ export default function PurchaseOrder({
       key: "status",
       header: "Status",
       width: "w-[120px]",
-      render: (row) => getStatusBadge(row.status),
+      render: (row) => getStatusBadge(row.status, row.rejection_reason), // ← Updated
     },
     {
       key: "expected_completion",
@@ -373,7 +397,11 @@ export default function PurchaseOrder({
                 </DialogDescription>
               </div>
               <div className="flex items-center gap-3">
-                {selectedOrder && getStatusBadge(selectedOrder.status)}
+                {selectedOrder &&
+                  getStatusBadge(
+                    selectedOrder.status,
+                    selectedOrder.rejection_reason,
+                  )}
 
                 {/* Print Button */}
                 {selectedOrder && (
