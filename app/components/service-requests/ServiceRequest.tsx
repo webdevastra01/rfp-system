@@ -43,15 +43,28 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-export default function ServiceRequest({ requests, module }: ServiceRequestPageProps) {
+export default function ServiceRequest({
+  requests,
+  module,
+}: ServiceRequestPageProps) {
   const router = useRouter();
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
 
-  const getStatusBadge = (status: keyof typeof statusConfig) => {
+  const getStatusBadge = (
+    status: keyof typeof statusConfig,
+    rejectionReason?: string,
+  ) => {
     const config = statusConfig[status];
-    return (
+
+    const badge = (
       <Badge
         className={`${config.bgColor} ${config.color} border ${config.borderColor}`}
         variant="secondary"
@@ -59,6 +72,23 @@ export default function ServiceRequest({ requests, module }: ServiceRequestPageP
         {config.label}
       </Badge>
     );
+
+    // Show tooltip only for rejected status
+    if (status === "rejected" && rejectionReason?.trim()) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>{badge}</TooltipTrigger>
+            <TooltipContent className="max-w-xs text-left">
+              <p className="font-medium">Rejection Reason:</p>
+              <p className="text-sm text-rose-100">{rejectionReason}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return badge;
   };
 
   const getPriorityBadge = (priority: keyof typeof priorityConfig) => {
@@ -136,7 +166,7 @@ export default function ServiceRequest({ requests, module }: ServiceRequestPageP
       key: "status",
       header: "Status",
       width: "w-[110px]",
-      render: (row) => getStatusBadge(row.status),
+      render: (row) => getStatusBadge(row.status, row.rejection_reason), // ← Added rejection_reason
     },
   ];
 
@@ -257,7 +287,10 @@ export default function ServiceRequest({ requests, module }: ServiceRequestPageP
               </div>
               {selectedRequest && (
                 <div className="shrink-0">
-                  {getStatusBadge(selectedRequest.status)}
+                  {getStatusBadge(
+                    selectedRequest.status,
+                    selectedRequest.rejection_reason,
+                  )}
                 </div>
               )}
             </div>

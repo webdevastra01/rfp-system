@@ -351,40 +351,20 @@ function calculateBeyondOperatingHoursFee(
   endDate: Date,
   beyondOperatingHoursRate: number,
 ) {
-  const operatingStartHour = 5; // 5 AM
-  const operatingEndHour = 19; // 7 PM
+  const start = new Date(startDate);
+  const end = new Date(endDate);
 
-  let affectedDays = 0;
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
 
-  const current = new Date(startDate);
-
-  while (current <= endDate) {
-    const dayStart = new Date(current);
-    dayStart.setHours(0, 0, 0, 0);
-
-    const rentalStartsToday =
-      current.toDateString() === startDate.toDateString();
-
-    const rentalEndsToday = current.toDateString() === endDate.toDateString();
-
-    const startHour = rentalStartsToday ? startDate.getHours() : 0;
-    const endHour = rentalEndsToday ? endDate.getHours() : 23;
-
-    const hasBeyondHours =
-      startHour < operatingStartHour ||
-      endHour >= operatingEndHour ||
-      (!rentalStartsToday && !rentalEndsToday); // full rental day
-
-    if (hasBeyondHours) {
-      affectedDays++;
-    }
-
-    current.setDate(current.getDate() + 1);
-  }
+  const rentalDays = Math.max(
+    1,
+    Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)),
+  );
 
   return {
-    affectedDays,
-    fee: affectedDays * beyondOperatingHoursRate,
+    affectedDays: rentalDays,
+    fee: rentalDays * beyondOperatingHoursRate,
   };
 }
 

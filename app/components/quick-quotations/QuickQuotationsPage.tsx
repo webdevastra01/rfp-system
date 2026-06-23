@@ -176,12 +176,11 @@ const DRIVER_FEE_RATES: Record<VehicleCategory, number> = {
 
 function computeDays(startDate: string, endDate: string): number {
   if (!startDate || !endDate) return 1;
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diff = Math.ceil(
-    (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
-  );
-  return Math.max(1, diff + 1);
+
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+
+  return Math.max(1, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 const categoryMap = {
@@ -227,13 +226,13 @@ function computeWithoutDriverQuotation(form: BaseFormState): QuotationResult {
       ? calculateBeyondOperatingHoursFee(
           new Date(form.startDate),
           new Date(form.endDate),
-          300,
+          500,
         ).fee
       : 0;
 
   const cdwRate = form.cdw ? pricing.cdw * days : 0;
 
-  const carwash = pricing.carwash_fee * days;
+  const carwash = pricing.carwash_fee;
 
   const deliveryFee = 0;
   const pickupFee = 0;
@@ -259,19 +258,22 @@ function computeWithoutDriverQuotation(form: BaseFormState): QuotationResult {
   const discountAmount = Math.round(mainSubtotal * (discountPercent / 100));
   const discountedSubtotal = mainSubtotal - discountAmount;
 
-  // === Terminal Fee (Safe for empty tuple) ===
+  // === Terminal Fee (with optional deposit inclusion) ===
   const pm = form.paymentMethod;
   const method = Array.isArray(pm)
-    ? ((pm as string[])[0] ?? undefined)
+    ? ((pm as ("cash" | "card")[])[0] ?? undefined)
     : typeof pm === "string"
-      ? pm
+      ? (pm as "cash" | "card")
       : undefined;
 
-  const terminalFee =
-    method === "card" ? Math.round(discountedSubtotal * 0.035) : 0;
-
-  // Deposit is included in the total amount due.
   const depositAmount = Math.round(Number(form.deposit || 0) || 0);
+
+  let terminalBase = discountedSubtotal;
+  if (method === "card" && form.includeDepositInTerminalFee) {
+    terminalBase += depositAmount;
+  }
+
+  const terminalFee = method === "card" ? Math.round(terminalBase * 0.035) : 0;
 
   const overallTotal = discountedSubtotal + terminalFee + depositAmount;
 
@@ -453,16 +455,19 @@ function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
   // === Terminal Fee (Safe for empty tuple / array / string) ===
   const pm = form.paymentMethod;
   const method = Array.isArray(pm)
-    ? ((pm as string[])[0] ?? undefined)
+    ? ((pm as ("cash" | "card")[])[0] ?? undefined)
     : typeof pm === "string"
-      ? pm
+      ? (pm as "cash" | "card")
       : undefined;
 
-  const terminalFee =
-    method === "card" ? Math.round(subtotalAfterDiscount * 0.035) : 0;
-
-  // Deposit is included in the total amount due.
   const depositAmount = Math.round(Number(form.deposit || 0) || 0);
+
+  let terminalBase = subtotalAfterDiscount;
+  if (method === "card" && form.includeDepositInTerminalFee) {
+    terminalBase += depositAmount;
+  }
+
+  const terminalFee = method === "card" ? Math.round(terminalBase * 0.035) : 0;
 
   const finalTotal = subtotalAfterDiscount + terminalFee + depositAmount;
 
@@ -752,6 +757,8 @@ export default function QuickQuotationPage() {
     discountPercent: "",
     paymentMethod: [],
 
+    includeDepositInTerminalFee: true,
+
     beyondOperatingHours: false,
     cdw: false,
   });
@@ -780,6 +787,8 @@ export default function QuickQuotationPage() {
     deposit: "",
     discountPercent: "",
     paymentMethod: [],
+
+    includeDepositInTerminalFee: true,
 
     beyondOperatingHours: false,
     cdw: false,
@@ -1266,14 +1275,19 @@ export default function QuickQuotationPage() {
                       value={
                         Array.isArray(wdForm.paymentMethod)
                           ? (wdForm.paymentMethod as string[])[0] || ""
-                          : ""
+                          : wdForm.paymentMethod || ""
                       }
-                      onValueChange={(v) =>
+                      onValueChange={(v) => {
+                        const newValue = v as "cash" | "card";
                         setWdForm((prev) => ({
                           ...prev,
-                          paymentMethod: [v] as any,
-                        }))
-                      }
+                          paymentMethod: [newValue], // Now typed safely
+                          includeDepositInTerminalFee:
+                            newValue === "card"
+                              ? (prev.includeDepositInTerminalFee ?? true)
+                              : false,
+                        }));
+                      }}
                     >
                       <SelectTrigger className="border-[#E2E8F0] bg-white">
                         <SelectValue placeholder="Select payment method" />
@@ -1286,6 +1300,30 @@ export default function QuickQuotationPage() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Conditional Toggle - Include Deposit in 3.5% Terminal Fee */}
+                  {wdForm.paymentMethod?.includes("card") && (
+                    <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-medium text-slate-700">
+                          Include deposit in 3.5% terminal fee
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          If enabled, the 3.5% fee will be calculated on
+                          (subtotal + deposit)
+                        </p>
+                      </div>
+                      <Switch
+                        checked={wdForm.includeDepositInTerminalFee ?? true}
+                        onCheckedChange={(checked) =>
+                          setWdForm((prev) => ({
+                            ...prev,
+                            includeDepositInTerminalFee: checked,
+                          }))
+                        }
+                      />
+                    </div>
+                  )}
                 </div>
               </FormCard>
             </>

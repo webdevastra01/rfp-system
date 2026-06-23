@@ -23,11 +23,9 @@ import {
   Calendar,
   User,
   Building2,
-  DollarSign,
   Package,
   Truck,
   CreditCard,
-  ArrowRight,
 } from "lucide-react";
 import { DataTableCard, Column } from "@/app/components/cards/DataTableCard";
 import {
@@ -40,13 +38,16 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import {
-  InfoItemProps,
-  Item,
-  Request,
-  ReviewRequestProps,
-} from "@/lib/interfaces";
+import { Item, Request, ReviewRequestProps } from "@/lib/interfaces";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Helper to calculate total from items
 const calculateTotal = (items: Item[]): number => {
@@ -74,15 +75,20 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
   const [actionType, setActionType] = useState<"approved" | "rejected" | null>(
     null,
   );
+  const [rejectionReason, setRejectionReason] = useState("");
   const supabase = createClient();
 
-  const getStatusBadge = (status: Request["status"]) => {
+  const getStatusBadge = (
+    status: Request["status"],
+    rejectionReason?: string,
+  ) => {
     const styles: Record<string, string> = {
       "for review": "bg-amber-50 text-amber-700 border-amber-200",
       approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
       rejected: "bg-rose-50 text-rose-700 border-rose-200",
     };
-    return (
+
+    const badge = (
       <Badge
         className={cn(
           styles[status] || "bg-slate-50 text-slate-700 border-slate-200",
@@ -93,6 +99,23 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );
+
+    // Show tooltip only for rejected requests
+    if (status === "rejected" && rejectionReason) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>{badge}</TooltipTrigger>
+            <TooltipContent className="max-w-xs text-left">
+              <p className="font-medium">Rejection Reason:</p>
+              <p className="text-sm text-rose-100">{rejectionReason}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return badge;
   };
 
   const getPriorityBadge = (priority: string) => {
@@ -131,9 +154,23 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
   const handleConfirmAction = async () => {
     if (!selectedRequest || !actionType) return;
 
-    await handleUpdateStatus(selectedRequest, actionType);
+    if (actionType === "rejected" && !rejectionReason.trim()) {
+      toast.error("Please provide a reason for rejection");
+      return;
+    }
 
+    await handleUpdateStatus(
+      selectedRequest,
+      actionType, // ← Now directly passes "approved" or "rejected"
+      {
+        rejectionReason:
+          actionType === "rejected" ? rejectionReason.trim() : undefined,
+      },
+    );
+
+    // Reset
     setActionDialogOpen(false);
+    setRejectionReason("");
     setSelectedRequest(null);
     setActionType(null);
   };
@@ -141,19 +178,26 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
   async function handleUpdateStatus(
     request: Request,
     status: "approved" | "rejected",
+    metadata?: { rejectionReason?: string }, // ← New optional parameter
   ) {
     try {
       const isServiceRequest = request.request_number.startsWith("SR");
       const table = isServiceRequest ? "service_requests" : "purchase_requests";
 
+      const updatePayload: any = { status };
+
+      // Add rejection reason if provided
+      if (status === "rejected" && metadata?.rejectionReason) {
+        updatePayload.rejection_reason = metadata.rejectionReason; // Use snake_case for DB
+      }
+
       const { error } = await supabase
         .from(table)
-        .update({ status })
+        .update(updatePayload)
         .eq("id", request.id);
 
       if (error) {
         console.error("Error updating status:", error);
-        // Add error toast here for better UX
         toast.error("Failed to update status", {
           description:
             error.message || "An error occurred while updating the request.",
@@ -165,25 +209,37 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
       const requestType = isServiceRequest
         ? "Service Request"
         : "Purchase Request";
-      const actionLabel = status === "approved" ? "approved" : "rejected";
 
-      // Single toast call with dynamic values
+      // Enhanced toast for rejection
       toast.success(
         status === "approved"
           ? `${requestType} approved successfully`
-          : `${requestType} rejected`,
+          : `${requestType} rejected successfully`,
         {
-          description: `${requestType} ${request.request_number} has been ${actionLabel}.`,
+          description:
+            status === "approved"
+              ? `${requestType} ${request.request_number} has been approved.`
+              : `${requestType} ${request.request_number} has been rejected.`,
         },
       );
 
       // Update UI
       setRequestList((prev) =>
-        prev.map((req) => (req.id === request.id ? { ...req, status } : req)),
+        prev.map((req) =>
+          req.id === request.id
+            ? {
+                ...req,
+                status,
+                ...(status === "rejected" &&
+                  metadata?.rejectionReason && {
+                    rejection_reason: metadata.rejectionReason,
+                  }),
+              }
+            : req,
+        ),
       );
     } catch (err) {
       console.error("Unexpected error:", err);
-      // Add error toast for unexpected errors
       toast.error("Unexpected error occurred", {
         description:
           "Please try again or contact support if the problem persists.",
@@ -272,7 +328,7 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
       key: "status",
       header: "Status",
       width: "w-[120px]",
-      render: (row) => getStatusBadge(row.status),
+      render: (row) => getStatusBadge(row.status, row.rejection_reason), // ← Pass rejection reason
     },
     {
       key: "preferred_date",
@@ -407,7 +463,11 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
                   {selectedRequest?.request_number}
                 </DialogDescription>
               </div>
-              {selectedRequest && getStatusBadge(selectedRequest.status)}
+              {selectedRequest &&
+                getStatusBadge(
+                  selectedRequest.status,
+                  selectedRequest.rejection_reason,
+                )}
             </div>
           </DialogHeader>
 
@@ -702,23 +762,51 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
               {actionType === "approved" ? "Approve Request" : "Reject Request"}
             </DialogTitle>
             <DialogDescription className="text-slate-500">
-              Are you sure you want to {actionType}{" "}
+              Are you sure you want to{" "}
+              {actionType === "approved" ? "approve" : "reject"}{" "}
               <span className="font-semibold text-slate-900">
                 {selectedRequest?.request_number}
               </span>
               ?
             </DialogDescription>
           </DialogHeader>
+
+          {/* Rejection Reason - Fixed condition */}
+          {actionType === "rejected" && (
+            <div className="space-y-2 py-2">
+              <Label
+                htmlFor="rejectionReason"
+                className="text-sm text-slate-700"
+              >
+                Reason for Rejection <span className="text-rose-500">*</span>
+              </Label>
+              <Textarea
+                id="rejectionReason"
+                placeholder="Enter reason for rejecting this request..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="min-h-[100px] resize-y border-[#E2E8F0]"
+              />
+              <p className="text-xs text-slate-500">
+                This reason will be visible to the requester.
+              </p>
+            </div>
+          )}
+
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
-              onClick={() => setActionDialogOpen(false)}
+              onClick={() => {
+                setActionDialogOpen(false);
+                setRejectionReason("");
+              }}
               className="border-[#E2E8F0] text-slate-700"
             >
               Cancel
             </Button>
             <Button
               onClick={handleConfirmAction}
+              disabled={actionType === "rejected" && !rejectionReason.trim()}
               className={
                 actionType === "approved"
                   ? "bg-emerald-600 hover:bg-emerald-700 text-white"

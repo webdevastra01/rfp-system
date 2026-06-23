@@ -366,6 +366,7 @@ export interface Request {
   requested_by: string;
   prepared_at?: string;
   created_at?: string;
+  rejection_reason?: string;
 }
 
 export interface Item {
@@ -434,6 +435,7 @@ export interface Order {
   journal_entries?: JournalEntry[];
   approved_by?: string;
   approved_on?: string;
+  rejection_reason?: string;
 }
 
 export interface ReviewOrderProps {
@@ -873,9 +875,10 @@ export interface BaseFormState {
   discountPercent: string;
 
   /** If card, add 3.5% terminal fee */
-  paymentMethod: PaymentMethod;
+  paymentMethod: ("cash" | "card")[];
 
   beyondOperatingHours: boolean;
+  includeDepositInTerminalFee: boolean,
   cdw: boolean;
 }
 

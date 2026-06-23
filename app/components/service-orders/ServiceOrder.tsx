@@ -43,6 +43,12 @@ import { colors, Order, Request, ServiceOrderProps } from "@/lib/interfaces";
 import { cn } from "@/lib/utils";
 import { useReactToPrint } from "react-to-print";
 import { PrintServiceOrder } from "./PrintServiceOrderPage";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function ServiceOrder({
   requests,
@@ -94,16 +100,17 @@ export default function ServiceOrder({
     }).format(amount);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, rejectionReason?: string) => {
     const config =
       colors.semantic[status as keyof typeof colors.semantic] ||
       colors.semantic.for_approval;
+
     const label =
       status === "for approval"
         ? "For Approval"
         : status.charAt(0).toUpperCase() + status.slice(1);
 
-    return (
+    const badge = (
       <Badge
         className={cn(
           config.bg,
@@ -117,6 +124,23 @@ export default function ServiceOrder({
         {label}
       </Badge>
     );
+
+    // Show tooltip for rejected orders
+    if (status === "rejected" && rejectionReason?.trim()) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>{badge}</TooltipTrigger>
+            <TooltipContent className="max-w-xs text-left">
+              <p className="font-medium">Rejection Reason:</p>
+              <p className="text-sm text-rose-100">{rejectionReason}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return badge;
   };
 
   const getPriorityBadge = (priority: string) => {
@@ -232,7 +256,7 @@ export default function ServiceOrder({
       key: "status",
       header: "Status",
       width: "w-[120px]",
-      render: (row) => getStatusBadge(row.status),
+      render: (row) => getStatusBadge(row.status, row.rejection_reason), // ← Updated
     },
     {
       key: "expected_completion",
@@ -392,7 +416,11 @@ export default function ServiceOrder({
                 </DialogDescription>
               </div>
               <div className="flex items-center gap-3">
-                {selectedOrder && getStatusBadge(selectedOrder.status)}
+                {selectedOrder &&
+                  getStatusBadge(
+                    selectedOrder.status,
+                    selectedOrder.rejection_reason,
+                  )}
 
                 {/* Print Button - Only show when order is selected */}
                 {selectedOrder && (

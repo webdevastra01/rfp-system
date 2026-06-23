@@ -180,6 +180,7 @@ async function getOrders(supabase: any): Promise<Order[]> {
       payment_method: r?.payment_method?.name || "",
 
       status: o.status,
+      rejection_reason: o.rejection_reason || "",
 
       vehicle: r?.vehicle || null,
 
