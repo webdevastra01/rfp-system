@@ -37,6 +37,12 @@ import {
 } from "lucide-react";
 import { DataTableCard, Column } from "@/app/components/cards/DataTableCard";
 import { Item, PurchaseRequestPageProps, Request } from "@/lib/interfaces";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function PurchaseRequest({
   requests,
@@ -46,13 +52,17 @@ export default function PurchaseRequest({
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
 
-  const getStatusBadge = (status: Request["status"]) => {
+  const getStatusBadge = (
+    status: Request["status"],
+    rejectionReason?: string,
+  ) => {
     const styles: Record<string, string> = {
       "for review": "bg-amber-100 text-amber-700",
       approved: "bg-emerald-100 text-emerald-700",
       rejected: "bg-rose-100 text-rose-700",
     };
-    return (
+
+    const badge = (
       <Badge
         className={styles[status] || "bg-slate-100 text-slate-700"}
         variant="secondary"
@@ -60,6 +70,23 @@ export default function PurchaseRequest({
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );
+
+    // Show tooltip for rejected requests
+    if (status === "rejected" && rejectionReason?.trim()) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>{badge}</TooltipTrigger>
+            <TooltipContent className="max-w-xs text-left">
+              <p className="font-medium">Rejection Reason:</p>
+              <p className="text-sm text-rose-100">{rejectionReason}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return badge;
   };
 
   const handleView = (request: Request) => {
@@ -119,7 +146,7 @@ export default function PurchaseRequest({
       key: "status",
       header: "Status",
       width: "w-[110px]",
-      render: (row) => getStatusBadge(row.status),
+      render: (row) => getStatusBadge(row.status, row.rejection_reason), // ← Updated
     },
   ];
 
@@ -243,7 +270,10 @@ export default function PurchaseRequest({
               </div>
               {selectedRequest && (
                 <div className="shrink-0 flex items-center gap-2">
-                  {getStatusBadge(selectedRequest.status)}
+                  {getStatusBadge(
+                    selectedRequest.status,
+                    selectedRequest.rejection_reason,
+                  )}
                   <Badge
                     variant={
                       selectedRequest.priority_level === "high"
