@@ -65,6 +65,7 @@ async function getRequests(supabase: any): Promise<Request[]> {
     payment_method: r.payment_method?.name || "",
 
     status: r.status,
+    rejection_reason: r.rejection_reason || "",
 
     vehicle: r.vehicle || null,
 
