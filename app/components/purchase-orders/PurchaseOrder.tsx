@@ -396,6 +396,7 @@ export default function PurchaseOrder({
                   {selectedOrder?.order_number}
                 </DialogDescription>
               </div>
+
               <div className="flex items-center gap-3">
                 {selectedOrder &&
                   getStatusBadge(
@@ -417,6 +418,17 @@ export default function PurchaseOrder({
                 )}
               </div>
             </div>
+
+            {/* Rejection Reason - shown only when rejected */}
+            {selectedOrder?.status === "rejected" &&
+              selectedOrder.rejection_reason?.trim() && (
+                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                  <p className="font-medium text-red-700">Rejection Reason:</p>
+                  <p className="mt-1 text-red-600">
+                    {selectedOrder.rejection_reason}
+                  </p>
+                </div>
+              )}
           </DialogHeader>
 
           {/* Hidden Printable Content */}

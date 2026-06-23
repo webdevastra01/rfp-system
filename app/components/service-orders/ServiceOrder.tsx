@@ -415,6 +415,7 @@ export default function ServiceOrder({
                   {selectedOrder?.order_number}
                 </DialogDescription>
               </div>
+
               <div className="flex items-center gap-3">
                 {selectedOrder &&
                   getStatusBadge(
@@ -422,7 +423,7 @@ export default function ServiceOrder({
                     selectedOrder.rejection_reason,
                   )}
 
-                {/* Print Button - Only show when order is selected */}
+                {/* Print Button */}
                 {selectedOrder && (
                   <Button
                     variant="outline"
@@ -436,6 +437,17 @@ export default function ServiceOrder({
                 )}
               </div>
             </div>
+
+            {/* Rejection Reason - shown when status is rejected */}
+            {selectedOrder?.status === "rejected" &&
+              selectedOrder.rejection_reason?.trim() && (
+                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                  <p className="font-medium text-red-700">Rejection Reason:</p>
+                  <p className="mt-1 text-red-600 leading-relaxed">
+                    {selectedOrder.rejection_reason}
+                  </p>
+                </div>
+              )}
           </DialogHeader>
 
           {/* Hidden Printable Content - Moved outside scrollable area but inside Dialog */}

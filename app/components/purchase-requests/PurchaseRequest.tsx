@@ -260,6 +260,7 @@ export default function PurchaseRequest({
                 <DialogTitle className="text-xl font-bold text-slate-900 tracking-tight">
                   {selectedRequest?.title || "Purchase Request Details"}
                 </DialogTitle>
+
                 <DialogDescription className="text-sm text-slate-500 mt-1.5 flex items-center gap-2 flex-wrap">
                   <span className="font-mono text-[#2B3A9F] font-semibold">
                     {selectedRequest?.request_number}
@@ -268,12 +269,14 @@ export default function PurchaseRequest({
                   <span>{selectedRequest?.company}</span>
                 </DialogDescription>
               </div>
+
               {selectedRequest && (
                 <div className="shrink-0 flex items-center gap-2">
                   {getStatusBadge(
                     selectedRequest.status,
                     selectedRequest.rejection_reason,
                   )}
+
                   <Badge
                     variant={
                       selectedRequest.priority_level === "high"
@@ -283,11 +286,22 @@ export default function PurchaseRequest({
                           : "secondary"
                     }
                   >
-                    {selectedRequest.priority_level}
+                    {selectedRequest.priority_level?.toUpperCase()}
                   </Badge>
                 </div>
               )}
             </div>
+
+            {/* Rejection Reason - shown when status is rejected */}
+            {selectedRequest?.status === "rejected" &&
+              selectedRequest.rejection_reason?.trim() && (
+                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                  <p className="font-medium text-red-700">Rejection Reason:</p>
+                  <p className="mt-1 text-red-600 leading-relaxed">
+                    {selectedRequest.rejection_reason}
+                  </p>
+                </div>
+              )}
           </DialogHeader>
 
           {selectedRequest ? (

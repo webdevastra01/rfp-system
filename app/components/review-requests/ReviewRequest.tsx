@@ -463,12 +463,24 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
                   {selectedRequest?.request_number}
                 </DialogDescription>
               </div>
+
               {selectedRequest &&
                 getStatusBadge(
                   selectedRequest.status,
                   selectedRequest.rejection_reason,
                 )}
             </div>
+
+            {/* Rejection Reason - shown when status is rejected */}
+            {selectedRequest?.status === "rejected" &&
+              selectedRequest.rejection_reason?.trim() && (
+                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+                  <p className="font-medium text-red-700">Rejection Reason:</p>
+                  <p className="mt-1 text-red-600 leading-relaxed">
+                    {selectedRequest.rejection_reason}
+                  </p>
+                </div>
+              )}
           </DialogHeader>
 
           {selectedRequest && (
