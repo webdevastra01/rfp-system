@@ -366,6 +366,7 @@ export interface Request {
   requested_by: string;
   prepared_at?: string;
   created_at?: string;
+  rejection_reason?: string;
 }
 
 export interface Item {

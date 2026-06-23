@@ -42,6 +42,12 @@ import { Item, Request, ReviewRequestProps } from "@/lib/interfaces";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Helper to calculate total from items
 const calculateTotal = (items: Item[]): number => {
@@ -72,13 +78,17 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
   const [rejectionReason, setRejectionReason] = useState("");
   const supabase = createClient();
 
-  const getStatusBadge = (status: Request["status"]) => {
+  const getStatusBadge = (
+    status: Request["status"],
+    rejectionReason?: string,
+  ) => {
     const styles: Record<string, string> = {
       "for review": "bg-amber-50 text-amber-700 border-amber-200",
       approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
       rejected: "bg-rose-50 text-rose-700 border-rose-200",
     };
-    return (
+
+    const badge = (
       <Badge
         className={cn(
           styles[status] || "bg-slate-50 text-slate-700 border-slate-200",
@@ -89,6 +99,23 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     );
+
+    // Show tooltip only for rejected requests
+    if (status === "rejected" && rejectionReason) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>{badge}</TooltipTrigger>
+            <TooltipContent className="max-w-xs text-left">
+              <p className="font-medium">Rejection Reason:</p>
+              <p className="text-sm text-rose-100">{rejectionReason}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return badge;
   };
 
   const getPriorityBadge = (priority: string) => {
@@ -301,7 +328,7 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
       key: "status",
       header: "Status",
       width: "w-[120px]",
-      render: (row) => getStatusBadge(row.status),
+      render: (row) => getStatusBadge(row.status, row.rejection_reason), // ← Pass rejection reason
     },
     {
       key: "preferred_date",
@@ -436,7 +463,11 @@ export default function ReviewRequest({ requests }: ReviewRequestProps) {
                   {selectedRequest?.request_number}
                 </DialogDescription>
               </div>
-              {selectedRequest && getStatusBadge(selectedRequest.status)}
+              {selectedRequest &&
+                getStatusBadge(
+                  selectedRequest.status,
+                  selectedRequest.rejection_reason,
+                )}
             </div>
           </DialogHeader>
 
