@@ -875,7 +875,7 @@ export interface BaseFormState {
   discountPercent: string;
 
   /** If card, add 3.5% terminal fee */
-  paymentMethod: PaymentMethod;
+  paymentMethod: ("cash" | "card")[];
 
   beyondOperatingHours: boolean;
   includeDepositInTerminalFee: boolean,

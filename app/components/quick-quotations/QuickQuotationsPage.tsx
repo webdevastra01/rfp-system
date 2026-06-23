@@ -261,9 +261,9 @@ function computeWithoutDriverQuotation(form: BaseFormState): QuotationResult {
   // === Terminal Fee (with optional deposit inclusion) ===
   const pm = form.paymentMethod;
   const method = Array.isArray(pm)
-    ? ((pm as string[])[0] ?? undefined)
+    ? ((pm as ("cash" | "card")[])[0] ?? undefined)
     : typeof pm === "string"
-      ? pm
+      ? (pm as "cash" | "card")
       : undefined;
 
   const depositAmount = Math.round(Number(form.deposit || 0) || 0);
@@ -455,9 +455,9 @@ function computeWithDriverQuotation(form: WithDriverForm): QuotationResult {
   // === Terminal Fee (Safe for empty tuple / array / string) ===
   const pm = form.paymentMethod;
   const method = Array.isArray(pm)
-    ? ((pm as string[])[0] ?? undefined)
+    ? ((pm as ("cash" | "card")[])[0] ?? undefined)
     : typeof pm === "string"
-      ? pm
+      ? (pm as "cash" | "card")
       : undefined;
 
   const depositAmount = Math.round(Number(form.deposit || 0) || 0);
@@ -1275,19 +1275,19 @@ export default function QuickQuotationPage() {
                       value={
                         Array.isArray(wdForm.paymentMethod)
                           ? (wdForm.paymentMethod as string[])[0] || ""
-                          : ""
+                          : wdForm.paymentMethod || ""
                       }
-                      onValueChange={(v) =>
+                      onValueChange={(v) => {
+                        const newValue = v as "cash" | "card";
                         setWdForm((prev) => ({
                           ...prev,
-                          paymentMethod: [v] as any,
-                          // Reset toggle when switching away from card
+                          paymentMethod: [newValue], // Now typed safely
                           includeDepositInTerminalFee:
-                            v === "card"
+                            newValue === "card"
                               ? (prev.includeDepositInTerminalFee ?? true)
                               : false,
-                        }))
-                      }
+                        }));
+                      }}
                     >
                       <SelectTrigger className="border-[#E2E8F0] bg-white">
                         <SelectValue placeholder="Select payment method" />
