@@ -876,6 +876,7 @@ export interface BaseFormState {
   paymentMethod: PaymentMethod;
 
   beyondOperatingHours: boolean;
+  includeDepositInTerminalFee: boolean,
   cdw: boolean;
 }
 
