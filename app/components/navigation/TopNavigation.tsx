@@ -28,6 +28,7 @@ import {
   ChevronDown,
   HandCoins,
   Car,
+  ClipboardCheck,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -88,6 +89,27 @@ const allNavItems: NavItem[] = [
             label: "Liquidation",
             href: "/home/employee-portal/requests/liquidation",
             permission: { type: "section", id: "liquidation-emp" },
+          },
+        ],
+      },
+      {
+        label: "Tickets",
+        permission: { type: "section", id: "tickets" },
+        subsections: [
+          {
+            label: "Tickets List",
+            href: "/home/employee-portal/tickets/ticket-list",
+            permission: { type: "subsection", id: "ticket-list" },
+          },
+          {
+            label: "Create Ticket",
+            href: "/home/employee-portal/tickets/create-ticket",
+            permission: { type: "subsection", id: "create-ticket" },
+          },
+          {
+            label: "Close Ticket",
+            href: "/home/employee-portal/tickets/close-ticket",
+            permission: { type: "subsection", id: "close-ticket" },
           },
         ],
       },
