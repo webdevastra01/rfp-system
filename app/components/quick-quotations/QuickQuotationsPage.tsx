@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from "react";
-
+import { toast } from "sonner";
 import {
   Calculator,
   Car,
@@ -51,6 +51,7 @@ import {
   EventType,
   FuelSetup,
   FuelType,
+  QuotationInsert,
   QuotationLineItem,
   QuotationResult,
   Timeframe,
@@ -66,6 +67,8 @@ import {
 } from "@/lib/formula";
 import QuotationModal from "./QuotationModal";
 import { Switch } from "@/components/ui/switch";
+import { createClient } from "@/lib/supabase/client";
+import { useUserCache, useUserProfile } from "@/hooks/usePermissions";
 
 const VEHICLE_CATEGORIES: {
   value: VehicleCategory;
@@ -234,8 +237,8 @@ function computeWithoutDriverQuotation(form: BaseFormState): QuotationResult {
 
   const carwash = pricing.carwash_fee;
 
-  const deliveryFee = 0;
-  const pickupFee = 0;
+  const deliveryFee = Number(form.deliveryFee || 0);
+  const pickupFee = Number(form.pickupFee || 0);
 
   const fuelConsumption = Math.round(form.distance * 0.12 * 10) / 10;
 
@@ -735,6 +738,86 @@ function ModeSelector({
   );
 }
 
+async function saveQuotation(
+  mode: "without-driver" | "with-driver",
+  formData: BaseFormState | WithDriverForm,
+  quotationResult: QuotationResult,
+  quotedBy: string | null, // e.g. user email or name
+): Promise<any> {
+  const supabase = await createClient();
+
+  console.log("Saving quotation:", formData, quotationResult, quotedBy);
+
+  const isWithDriver = mode === "with-driver";
+
+  // Extract excess mileage from result (if available)
+  const excessMileageItem = quotationResult.lineItems.find((item) =>
+    item.label.toLowerCase().includes("excess"),
+  );
+  const excessMileage = excessMileageItem?.value?.toString() || "0";
+
+  const payload: QuotationInsert = {
+    quotation_type: mode,
+    vehicle_category: formData.vehicleCategory,
+    timeframe: formData.timeframe,
+    classification: (formData as any).classification || "standard",
+    start_date: formData.startDate || undefined,
+    end_date: formData.endDate || undefined,
+    cdw: (formData as any).cdw || false,
+    beyond_operating_hours: (formData as any).beyondOperatingHours || false,
+    additional_hours: (formData.additionalHours || 0).toString(),
+    excess_mileage: excessMileage,
+    deposit: (formData.deposit || "0").toString(),
+    discount: (formData.discountPercent || "0").toString(),
+    payment_method: Array.isArray(formData.paymentMethod)
+      ? formData.paymentMethod[0] || "cash"
+      : (formData.paymentMethod as string) || "cash",
+
+    // With Driver specific fields
+    fuel_setup: isWithDriver
+      ? (formData as WithDriverForm).fuelSetup
+      : undefined,
+    trip_type: isWithDriver ? (formData as WithDriverForm).tripType : undefined,
+    event_type: isWithDriver
+      ? (formData as WithDriverForm).eventType
+      : undefined,
+    client_type: isWithDriver
+      ? (formData as WithDriverForm).clientType
+      : undefined,
+    coverage_area: isWithDriver
+      ? (formData as WithDriverForm).coverage
+      : undefined,
+    driving_term: isWithDriver
+      ? (formData as WithDriverForm).drivingTerm
+      : undefined,
+    accommodation_fee: isWithDriver
+      ? (formData as WithDriverForm).accommodationFee?.toString()
+      : undefined,
+    meal_fee: isWithDriver
+      ? (formData as WithDriverForm).mealFee?.toString()
+      : undefined,
+    fuel_type: isWithDriver ? (formData as WithDriverForm).fuelType : undefined,
+    fuel_price: isWithDriver
+      ? (formData as WithDriverForm).fuelPrice?.toString()
+      : undefined,
+
+    quoted_by: quotedBy,
+  };
+
+  const { data, error } = await supabase
+    .from("quotations")
+    .insert([payload])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Supabase insert error:", error);
+    throw new Error(`Failed to save quotation: ${error.message}`);
+  }
+
+  return data;
+}
+
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export default function QuickQuotationPage() {
@@ -742,6 +825,9 @@ export default function QuickQuotationPage() {
   const [quotationOpen, setQuotationOpen] = useState(false);
   const [quotationResult, setQuotationResult] =
     useState<QuotationResult | null>(null);
+
+  const { profile } = useUserCache();
+  const [isSaving, setIsSaving] = useState(false);
 
   // Without Driver Form State
   const [wdForm, setWdForm] = useState<BaseFormState>({
@@ -761,6 +847,9 @@ export default function QuickQuotationPage() {
 
     beyondOperatingHours: false,
     cdw: false,
+
+    pickupFee: "0",
+    deliveryFee: "0",
   });
 
   // With Driver Form State
@@ -855,6 +944,38 @@ export default function QuickQuotationPage() {
 
     return Object.keys(config.rates ?? {});
   }, [mode, wdForm.vehicleCategory, wdriverForm.vehicleCategory]);
+
+  const handleSaveQuotation = async () => {
+    if (!quotationResult) {
+      toast.error("No quotation to save");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const quotedBy = profile?.user_id || null;
+
+      await saveQuotation(
+        mode,
+        mode === "without-driver" ? wdForm : wdriverForm,
+        quotationResult,
+        quotedBy,
+      );
+
+      toast.success("Quotation saved successfully!", {
+        description: "You can find it in the quotations list.",
+        duration: 4000,
+      });
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Failed to save quotation", {
+        description: error.message || "Please try again.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -1260,6 +1381,55 @@ export default function QuickQuotationPage() {
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
                         %
                       </span>
+                    </div>
+                  </div>
+
+                  {/* Pickup & Delivery Fees */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t">
+                    <div className="space-y-1.5">
+                      <Label className="text-sm text-slate-700">
+                        Delivery Fee (₱)
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                          ₱
+                        </span>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={wdForm.deliveryFee || ""}
+                          onChange={(e) =>
+                            setWdForm((prev) => ({
+                              ...prev,
+                              deliveryFee: Number(e.target.value).toString(),
+                            }))
+                          }
+                          className="pl-7"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-sm text-slate-700">
+                        Pick-up Fee (₱)
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                          ₱
+                        </span>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={wdForm.pickupFee || ""}
+                          onChange={(e) =>
+                            setWdForm((prev) => ({
+                              ...prev,
+                              pickupFee: Number(e.target.value).toString(),
+                            }))
+                          }
+                          className="pl-7"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -1679,6 +1849,8 @@ export default function QuickQuotationPage() {
         open={quotationOpen}
         onOpenChange={setQuotationOpen}
         result={quotationResult}
+        onSave={handleSaveQuotation}
+        isSaving={isSaving}
       />
     </div>
   );

@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { QuotationResult } from "@/lib/interfaces";
-import { Check, Copy, Download, FileText, Printer } from "lucide-react";
+import { Check, Copy, Download, FileText, Printer, Save } from "lucide-react";
 
 const formatCurrency = (value: number): string => {
   return `₱${value.toLocaleString("en-PH", {
@@ -22,32 +22,37 @@ export default function QuotationModal({
   open,
   onOpenChange,
   result,
+  onSave,
+  isSaving = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   result: QuotationResult | null;
+  onSave?: () => void;
+  isSaving?: boolean;
 }) {
   if (!result) return null;
 
   const regularItems = result.lineItems.filter(
-    (li) => !li.isTotal && !li.isHighlight && !li.isSubtotal
+    (li) => !li.isTotal && !li.isHighlight && !li.isSubtotal,
   );
 
   const subtotalItem = result.lineItems.find((li) => li.isSubtotal);
 
   const totalItems = result.lineItems.filter(
-    (li) => li.isTotal || li.isHighlight
+    (li) => li.isTotal || li.isHighlight,
   );
 
   const depositItems = regularItems.filter((item) =>
-  item.label.toLowerCase().includes("deposit")
-);
+    item.label.toLowerCase().includes("deposit"),
+  );
 
   // Get the final overall total (usually the last highlight item)
-  const overallTotal = totalItems.find((item) =>
-    item.label.toLowerCase().includes("overall") || 
-    item.isHighlight
-  ) || totalItems[totalItems.length - 1];
+  const overallTotal =
+    totalItems.find(
+      (item) =>
+        item.label.toLowerCase().includes("overall") || item.isHighlight,
+    ) || totalItems[totalItems.length - 1];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -65,14 +70,15 @@ export default function QuotationModal({
                 variant="outline"
                 className="bg-[#EEF2FF] text-[#2B3A9F] border-[#2B3A9F]/30 px-3 py-1"
               >
-                {result.mode === "with-driver" ? "With Driver" : "Without Driver"}
+                {result.mode === "with-driver"
+                  ? "With Driver"
+                  : "Without Driver"}
               </Badge>
             </div>
 
             <DialogDescription className="text-slate-500 mt-1">
               Generated on{" "}
-              {new Date().toLocaleDateString("en-PH", { dateStyle: "long" })}{" "}
-              at{" "}
+              {new Date().toLocaleDateString("en-PH", { dateStyle: "long" })} at{" "}
               {new Date().toLocaleTimeString("en-PH", {
                 hour: "2-digit",
                 minute: "2-digit",
@@ -126,7 +132,10 @@ export default function QuotationModal({
                         {regularItems
                           .filter((item) => !item.isDeduction)
                           .map((item, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                            <tr
+                              key={idx}
+                              className="hover:bg-slate-50 transition-colors"
+                            >
                               <td className="px-5 py-3">
                                 <div className="flex items-center gap-3">
                                   <span className="w-5 flex-shrink-0 text-lg text-slate-400">
@@ -166,38 +175,42 @@ export default function QuotationModal({
               <div className="space-y-8">
                 {/* Deposit */}
                 {depositItems.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-4">
-                    Deposit
-                  </p>
-                  <div className="rounded-2xl border border-slate-100 overflow-hidden">
-                    <table className="w-full">
-                      <tbody className="divide-y divide-slate-100">
-                        {regularItems
-                          .filter((item) =>
-                            item.label.toLowerCase() === ("deposit (20%)")
-                          )
-                          .map((item, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                              <td className="px-5 py-3">
-                                <div className="flex items-center gap-3">
-                                  <span className="text-slate-400 text-lg flex-shrink-0 w-5">
-                                    {item.icon}
-                                  </span>
-                                  <span className="text-sm text-slate-700">
-                                    {item.label}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-5 py-3 text-right font-mono text-sm text-slate-900">
-                                {formatCurrency(item.value)}
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-4">
+                      Deposit
+                    </p>
+                    <div className="rounded-2xl border border-slate-100 overflow-hidden">
+                      <table className="w-full">
+                        <tbody className="divide-y divide-slate-100">
+                          {regularItems
+                            .filter(
+                              (item) =>
+                                item.label.toLowerCase() === "deposit (20%)",
+                            )
+                            .map((item, idx) => (
+                              <tr
+                                key={idx}
+                                className="hover:bg-slate-50 transition-colors"
+                              >
+                                <td className="px-5 py-3">
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-slate-400 text-lg flex-shrink-0 w-5">
+                                      {item.icon}
+                                    </span>
+                                    <span className="text-sm text-slate-700">
+                                      {item.label}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-5 py-3 text-right font-mono text-sm text-slate-900">
+                                  {formatCurrency(item.value)}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
                 )}
 
                 {/* Fees */}
@@ -219,7 +232,10 @@ export default function QuotationModal({
                             );
                           })
                           .map((item, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                            <tr
+                              key={idx}
+                              className="hover:bg-slate-50 transition-colors"
+                            >
                               <td className="px-5 py-3">
                                 <div className="flex items-center gap-3">
                                   <span className="text-slate-400 text-lg flex-shrink-0 w-5">
@@ -252,7 +268,10 @@ export default function QuotationModal({
                           {regularItems
                             .filter((item) => item.isDeduction)
                             .map((item, idx) => (
-                              <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                              <tr
+                                key={idx}
+                                className="hover:bg-slate-50 transition-colors"
+                              >
                                 <td className="px-5 py-3">
                                   <div className="flex items-center gap-3">
                                     <span className="text-slate-400 text-lg flex-shrink-0 w-5">
@@ -272,20 +291,19 @@ export default function QuotationModal({
                       </table>
                     </div>
                     {/* Overall Total - Full Width & Prominent */}
-            {overallTotal && (
-              <div className="mt-10">
-                <div className="rounded-3xl bg-[#EEF2FF] border-2 border-[#2B3A9F]/30 px-8 py-8 text-center">
-                  <p className="text-[#2B3A9F] font-medium text-sm tracking-widest uppercase">
-                    {overallTotal.label}
-                  </p>
-                  <p className="text-4xl font-bold text-[#2B3A9F] font-mono tracking-tighter mt-2">
-                    {formatCurrency(overallTotal.value)}
-                  </p>
-                </div>
-              </div>
-            )}
+                    {overallTotal && (
+                      <div className="mt-10">
+                        <div className="rounded-3xl bg-[#EEF2FF] border-2 border-[#2B3A9F]/30 px-8 py-8 text-center">
+                          <p className="text-[#2B3A9F] font-medium text-sm tracking-widest uppercase">
+                            {overallTotal.label}
+                          </p>
+                          <p className="text-4xl font-bold text-[#2B3A9F] font-mono tracking-tighter mt-2">
+                            {formatCurrency(overallTotal.value)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  
                 )}
               </div>
             </div>
@@ -294,7 +312,7 @@ export default function QuotationModal({
 
         {/* Footer Actions */}
         <DialogFooter className="border-t px-8 py-5 bg-white">
-          <div className="flex items-center gap-3 w-full sm:w-auto pb-4">
+          <div className="flex flex-wrap gap-3 w-full">
             <Button variant="outline" className="gap-2" size="sm">
               <Printer className="h-4 w-4" />
               Print
@@ -308,13 +326,26 @@ export default function QuotationModal({
               Copy
             </Button>
 
+            {/* SAVE BUTTON */}
+            {onSave && (
+              <Button
+                onClick={onSave}
+                disabled={isSaving}
+                size="sm"
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700 ml-auto"
+              >
+                <Save className="h-4 w-4" />
+                {isSaving ? "Saving..." : "Save Quotation"}
+              </Button>
+            )}
+
             <Button
               size="sm"
-              className="gap-2 bg-[#2B3A9F] hover:bg-[#1e2870] ml-auto"
+              className="gap-2 bg-[#2B3A9F] hover:bg-[#1e2870]"
               onClick={() => onOpenChange(false)}
             >
               <Check className="h-4 w-4" />
-              Confirm Quotation
+              Confirm & Close
             </Button>
           </div>
         </DialogFooter>

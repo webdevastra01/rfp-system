@@ -878,8 +878,10 @@ export interface BaseFormState {
   paymentMethod: ("cash" | "card")[];
 
   beyondOperatingHours: boolean;
-  includeDepositInTerminalFee: boolean,
+  includeDepositInTerminalFee: boolean;
   cdw: boolean;
+  deliveryFee?: string | null;
+  pickupFee?: string | null;
 }
 
 export interface WithDriverForm extends BaseFormState {
@@ -911,3 +913,35 @@ export interface QuotationResult {
   operationalDetails: { label: string; value: string }[];
   mode: ComputationMode;
 }
+
+export type QuotationInsert = {
+  quotation_type: string;
+  vehicle_category: string;
+  timeframe: string;
+  classification: string;
+  start_date?: string;
+  end_date?: string;
+  cdw: boolean;
+  beyond_operating_hours: boolean;
+  additional_hours?: string;
+  excess_mileage?: string;
+  deposit?: string;
+  discount?: string;
+  payment_method: string;
+  fuel_setup?: string;
+  trip_type?: string;
+  event_type?: string;
+  client_type?: string;
+  coverage_area?: string;
+  driving_term?: string;
+  accommodation_fee?: string;
+  meal_fee?: string;
+  fuel_type?: string;
+  fuel_price?: string;
+  quoted_by?: string | null;
+  rental_rate: string;
+  carwash_fee: string;
+  delivery_fee: string;
+  pickup_fee: string;
+  night_differential: string;
+};

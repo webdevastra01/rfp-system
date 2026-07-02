@@ -185,11 +185,6 @@ const allNavItems: NavItem[] = [
         permission: { type: "section", id: "quick-quotations" },
       },
       {
-        label: "Compution and Itenerary",
-        href: "/home/jmave/compution-and-itenerary",
-        permission: { type: "section", id: "compution-and-itenerary" },
-      },
-      {
         label: "Internal Breakdowns",
         href: "/home/jmave/internal-breakdowns",
         permission: { type: "section", id: "internal-breakdowns" },
